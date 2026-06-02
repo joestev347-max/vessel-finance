@@ -1,0 +1,146 @@
+// Vessel Finance — prototype schema.
+//
+// All monetary amounts are stored in minor units (USD cents) as Int to avoid
+// floating-point rounding when summing thousands of expenses. Helpers in
+// src/lib/money.ts convert to/from dollars at the edges.
+//
+// SQLite does not support enums, so categorical fields are typed as `String`
+// and the allowed values are documented inline and enforced by the literal
+// union types in `src/lib/domain.ts`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Vessel {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  imoNumber    String   @unique
+  type         String   // TANKER | BULKER | CONTAINER | OFFSHORE_SUPPLY | RORO | LNG_CARRIER
+  flag         String
+  owner        String
+  dwt          Int      // deadweight tonnage
+  yearBuilt    Int
+  status       String   @default("ACTIVE")  // ACTIVE | IN_DRYDOCK | LAID_UP | DECOMMISSIONED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  voyages   Voyage[]
+  budgets   Budget[]
+  expenses  Expense[]
+  revenues  Revenue[]
+}
+
+model Account {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  category    String  // REVENUE | OPEX | CAPEX | OTHER
+  subcategory String?
+
+  budgets   Budget[]
+  expenses  Expense[]
+  revenues  Revenue[]
+}
+
+model Voyage {
+  id            String    @id @default(cuid())
+  vesselId      String
+  voyageNumber  String
+  origin        String
+  destination   String
+  startDate     DateTime
+  endDate       DateTime?
+  status        String    @default("PLANNED")  // PLANNED | IN_PROGRESS | COMPLETED | CANCELLED
+  charterer     String?
+  distanceNm    Int?
+  createdAt     DateTime  @default(now())
+
+  vessel    Vessel    @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  expenses  Expense[]
+  revenues  Revenue[]
+
+  @@unique([vesselId, voyageNumber])
+  @@index([vesselId, startDate])
+}
+
+model Budget {
+  id           String   @id @default(cuid())
+  vesselId     String
+  accountId    String
+  fiscalYear   Int
+  fiscalMonth  Int      // 1-12
+  amountCents  Int      // budgeted amount in USD cents
+  currency     String   @default("USD")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vessel  Vessel  @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+
+  transfersFrom BudgetTransfer[] @relation("TransferFrom")
+  transfersTo   BudgetTransfer[] @relation("TransferTo")
+
+  @@unique([vesselId, accountId, fiscalYear, fiscalMonth])
+  @@index([vesselId, fiscalYear])
+}
+
+model BudgetTransfer {
+  id             String   @id @default(cuid())
+  fromBudgetId   String
+  toBudgetId     String
+  amountCents    Int
+  reason         String
+  transferredAt  DateTime @default(now())
+  transferredBy  String   @default("system")
+
+  fromBudget Budget @relation("TransferFrom", fields: [fromBudgetId], references: [id])
+  toBudget   Budget @relation("TransferTo",   fields: [toBudgetId],   references: [id])
+}
+
+model Expense {
+  id           String   @id @default(cuid())
+  vesselId     String
+  accountId    String
+  voyageId     String?
+  vendor       String
+  amountCents  Int
+  currency     String   @default("USD")
+  expenseDate  DateTime
+  description  String
+  status       String   @default("PENDING")  // PENDING | APPROVED | PAID | REJECTED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vessel  Vessel  @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+  voyage  Voyage? @relation(fields: [voyageId], references: [id])
+
+  @@index([vesselId, expenseDate])
+  @@index([accountId, expenseDate])
+}
+
+model Revenue {
+  id              String   @id @default(cuid())
+  vesselId        String
+  accountId       String
+  voyageId        String?
+  source          String
+  amountCents     Int
+  currency        String   @default("USD")
+  recognitionDate DateTime
+  description     String?
+  createdAt       DateTime @default(now())
+
+  vessel  Vessel  @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+  voyage  Voyage? @relation(fields: [voyageId], references: [id])
+
+  @@index([vesselId, recognitionDate])
+}

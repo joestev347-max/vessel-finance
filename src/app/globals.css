@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply bg-ink-50 text-ink-800 antialiased;
+  }
+  body {
+    font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+}
+
+@layer components {
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table thead th {
+    @apply text-left font-semibold text-ink-500 uppercase tracking-wide text-xs px-3 py-2 border-b border-ink-100 bg-ink-50;
+  }
+  .data-table tbody td {
+    @apply px-3 py-2 border-b border-ink-100;
+  }
+  .data-table tbody tr:hover {
+    @apply bg-ink-50/60;
+  }
+  .num { @apply tabular-nums text-right; }
+}
