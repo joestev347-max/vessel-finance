@@ -11,3 +11,12 @@ prisma/*.db-journal
 .vercel
 .turbo
 coverage
+
+# Limitless Stack — local helper scripts & scratch (machine-specific, not for git)
+_*.ps1
+_*.txt
+_*.cmd
+_*.pdf
+_build.log
+_server.log
+_skill-build/

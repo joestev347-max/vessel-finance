@@ -15,7 +15,22 @@ export default async function BudgetsPage({
   searchParams: { vesselId?: string; year?: string };
 }) {
   const vessels = await prisma.vessel.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
-  if (vessels.length === 0) return notFound();
+  if (vessels.length === 0) {
+    return (
+      <>
+        <Header title="Budgets" subtitle="Drag-and-drop budget transfers" />
+        <div className="p-8">
+          <Card title="No vessels yet">
+            <p className="text-sm text-ink-500">
+              Budgets are set per vessel. <Link href="/vessels/new" className="text-accent-700 hover:underline">Add a vessel</Link> and{" "}
+              <Link href="/accounts/new" className="text-accent-700 hover:underline">an account</Link>, then{" "}
+              <Link href="/budgets/new" className="text-accent-700 hover:underline">create budget lines</Link>.
+            </p>
+          </Card>
+        </div>
+      </>
+    );
+  }
   const vesselId = searchParams.vesselId ?? vessels[0].id;
   const year = Number(searchParams.year ?? new Date().getUTCFullYear());
 
@@ -40,7 +55,11 @@ export default async function BudgetsPage({
 
   return (
     <>
-      <Header title="Budgets" subtitle={`Drag-and-drop budget transfers · ${vessel.name} · FY ${year}`} />
+      <Header title="Budgets" subtitle={`Drag-and-drop budget transfers · ${vessel.name} · FY ${year}`}>
+        <Link href="/budgets/new" className="inline-flex items-center justify-center rounded-md px-3.5 py-2 text-sm font-medium bg-accent-600 text-white hover:bg-accent-700 transition">
+          + New budget
+        </Link>
+      </Header>
       <div className="p-8 space-y-6">
         <Card title="Filters">
           <form className="flex flex-wrap gap-3 items-end">

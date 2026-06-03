@@ -20,7 +20,11 @@ export default async function VesselsPage() {
   });
   return (
     <>
-      <Header title="Vessels" subtitle={`${vessels.length} vessels under management`} />
+      <Header title="Vessels" subtitle={`${vessels.length} vessels under management`}>
+        <Link href="/vessels/new" className="inline-flex items-center justify-center rounded-md px-3.5 py-2 text-sm font-medium bg-accent-600 text-white hover:bg-accent-700 transition">
+          + New vessel
+        </Link>
+      </Header>
       <div className="p-8">
         <Card title="Fleet">
           <div className="overflow-x-auto">
@@ -52,7 +56,7 @@ export default async function VesselsPage() {
                     <td className="text-ink-600">{v.owner}</td>
                     <td className="num">{v.dwt.toLocaleString()}</td>
                     <td className="num">{v.yearBuilt}</td>
-                    <td><Badge tone={STATUS_TONE[v.status]}>{v.status.replace(/_/g, " ")}</Badge></td>
+                    <td><Badge tone={STATUS_TONE[v.status as keyof typeof STATUS_TONE]}>{v.status.replace(/_/g, " ")}</Badge></td>
                     <td className="num">{v._count.voyages}</td>
                   </tr>
                 ))}

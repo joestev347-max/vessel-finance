@@ -90,7 +90,7 @@ export default async function ExpensesPage({
                     <td>{e.vendor}</td>
                     <td className="text-ink-600 text-xs">{e.description}</td>
                     <td className="num">{formatUSD(e.amountCents)}</td>
-                    <td><Badge tone={STATUS_TONE[e.status]}>{e.status}</Badge></td>
+                    <td><Badge tone={STATUS_TONE[e.status as keyof typeof STATUS_TONE]}>{e.status}</Badge></td>
                   </tr>
                 ))}
               </tbody>
