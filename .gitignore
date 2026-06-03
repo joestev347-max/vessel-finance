@@ -12,11 +12,7 @@ prisma/*.db-journal
 .turbo
 coverage
 
-# Limitless Stack — local helper scripts & scratch (machine-specific, not for git)
-_*.ps1
-_*.txt
-_*.cmd
-_*.pdf
-_build.log
-_server.log
+# Limitless Stack — local helper scripts, scratch & state (machine-specific, not for git)
+_*
 _skill-build/
+tools/.pinecone-sync-state.json
