@@ -1,63 +1,115 @@
-# Roll Call - Windows preflight for the Limitless Stack (vessel-finance)
+# Roll Call - Limitless Stack readiness preflight (vessel-finance, Windows)
 #
-# Faithful Windows equivalent of the upstream tools/limitless-preflight.sh (step 8.5).
-# Verifies the local stack is wired up and reports READY / WARN / BLOCK.
+# Mechanical gate run at the start of substantive sessions. Checks each of the seven
+# tools and reports a green/yellow/red verdict.
 #
-#   Exit 0 = READY  (proceed)
-#   Exit 1 = WARN   (proceed unless the user says otherwise)
-#   Exit 2 = BLOCK  (do not start substantive work until fixed)
+#   Exit 0 = READY (all green) - proceed
+#   Exit 1 = WARN  (yellow drift) - report briefly, then proceed unless told otherwise
+#   Exit 2 = BLOCK (red) - do not start substantive work until fixed or overridden
 #
-# Usage:  powershell -NoProfile -ExecutionPolicy Bypass -File tools\preflight.ps1
+# Idempotent and read-only (except `notebooklm auth check --test`, which refreshes the
+# token silently). ASCII only on purpose (em-dashes break the PS parser when written by tools).
 
 $ErrorActionPreference = "Continue"
-$repo   = "C:\Users\joest\vessel-finance"
-$skills = "C:\Users\joest\.claude\skills"
-$block = 0; $warn = 0
-function Ok   ($m) { Write-Output "  [OK]    $m" }
-function Warn ($m) { Write-Output "  [WARN]  $m"; $script:warn++ }
-function Block($m) { Write-Output "  [BLOCK] $m"; $script:block++ }
+# This machine's spawned shells drop .EXE from PATHEXT; without this, `& python.exe`/`& git.exe`
+# fail as "cannot run a document" and every exe-based check silently false-positives. (anti-pattern #1)
+$env:PATHEXT = ".COM;.EXE;.BAT;.CMD"
+$repo     = "C:\Users\joest\vessel-finance"
+$skills   = "C:\Users\joest\.claude\skills"
+$git      = "C:\Program Files\Git\cmd\git.exe"
+$py       = "C:\Users\joest\AppData\Local\Programs\Python\Python312\python.exe"
+$reminder = "202e85d1-7659-4c1a-a35c-bad1b1c81a64"
+
+$green = 0; $yellow = 0; $red = 0
+$warnings = @(); $blocks = @()
+function Green ($m) { Write-Output "  [green]  $m"; $script:green++ }
+function Yellow($m) { Write-Output "  [yellow] $m"; $script:yellow++; $script:warnings += $m }
+function Red   ($m) { Write-Output "  [red]    $m"; $script:red++; $script:blocks += $m }
 
 Write-Output "=== Roll Call - vessel-finance ==="
 
-# 1. Trust anchor + wiki (core - missing = BLOCK)
-if (Test-Path "$repo\CLAUDE.md") { Ok "CLAUDE.md present (trust anchor)" } else { Block "CLAUDE.md missing" }
-foreach ($f in "index.md","log.md","overview.md") {
-  if (Test-Path "$repo\wiki\$f") { Ok "wiki/$f present" } else { Block "wiki/$f missing" }
-}
-if (Test-Path "$repo\wiki\synthesis\claude-anti-patterns.md") { Ok "anti-patterns log present" } else { Warn "wiki/synthesis/claude-anti-patterns.md missing" }
+# 1. Claude - reasoning engine (implicitly present: it invoked this script)
+Green "Claude - reasoning engine present"
 
-# 2. Skills installed
-$want = "limitless-stack","roll-call","four-tool-lookup","verify-before-claim","karpathy-guidelines","notebooklm","notebooklm-workflow","obsidian-wiki-workflow"
-foreach ($s in $want) {
-  if (Test-Path "$skills\$s\SKILL.md") { Ok "skill: $s" } else { Warn "skill missing: $s" }
-}
+# 2. CLAUDE.md - trust anchor (missing = BLOCK)
+if (Test-Path "$repo\CLAUDE.md") { Green "CLAUDE.md present (trust anchor)" } else { Red "CLAUDE.md missing" }
 
-# 3. Git state (uncommitted work = WARN - last session may not have wrapped)
-$git = "C:\Program Files\Git\cmd\git.exe"
+# 3. Obsidian - wiki readable, page count, git clean
+if (Test-Path "$repo\wiki\index.md") {
+  $pages = @(Get-ChildItem "$repo\wiki" -Recurse -Filter *.md -ErrorAction SilentlyContinue).Count
+  if ($pages -ge 5) { Green "Obsidian wiki: index.md present, $pages pages" }
+  else { Yellow "Obsidian wiki: only $pages pages - vault looks thin" }
+} else { Red "wiki/index.md missing" }
 if (Test-Path $git) {
   $status = & $git -C $repo status --porcelain 2>$null
-  if ([string]::IsNullOrWhiteSpace($status)) {
-    Ok "git working tree clean"
-  } else {
-    $n = @($status | Where-Object { $_ -ne "" }).Count
-    Warn "git has uncommitted changes ($n files) - commit/push to wrap the session"
-  }
-} else { Warn "git not found at $git" }
+  if ([string]::IsNullOrWhiteSpace($status)) { Green "Obsidian/git: working tree clean" }
+  else { $n = @($status | Where-Object { $_ -ne "" }).Count; Yellow "$n uncommitted files in vault - git status --short - ask before committing" }
+} else { Yellow "git not found at $git" }
 
-# 4. Pinecone (semantic memory) - WARN if not set up
-if ($env:PINECONE_API_KEY) { Ok "PINECONE_API_KEY set" } else { Warn "PINECONE_API_KEY not set - semantic search disabled (step 8.2)" }
-$py = "C:\Users\joest\AppData\Local\Programs\Python\Python312\python.exe"
-if (Test-Path $py) {
+# 4. Pinecone - key present, package importable, last sync newer than newest wiki edit
+$pcKey = $env:PINECONE_API_KEY
+if (-not $pcKey) { $pcKey = [Environment]::GetEnvironmentVariable("PINECONE_API_KEY", "User") }
+if (-not $pcKey) {
+  Yellow "Pinecone: PINECONE_API_KEY not set - semantic search disabled"
+} elseif (-not (Test-Path $py)) {
+  Yellow "Pinecone: python not found at $py"
+} else {
   & $py -c "import pinecone" 2>$null
-  if ($LASTEXITCODE -eq 0) { Ok "pinecone python package installed" } else { Warn "pinecone package not installed - pip install pinecone --break-system-packages" }
-} else { Warn "python not found at $py" }
+  if ($LASTEXITCODE -ne 0) {
+    Yellow "Pinecone: pip package missing - python -m pip install pinecone --include=dev"
+  } else {
+    $state = "$repo\tools\.pinecone-sync-state.json"
+    $newestWiki = (Get-ChildItem "$repo\wiki" -Recurse -Filter *.md -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
+    if (-not (Test-Path $state)) {
+      Yellow "Pinecone: key set but never synced - run 'python tools\pinecone-sync.py'"
+    } elseif ($newestWiki -gt (Get-Item $state).LastWriteTime) {
+      Yellow "Pinecone stale: wiki edited since last sync - run 'python tools\pinecone-sync.py --changed-only'"
+    } else {
+      Green "Pinecone: key set, index synced (newer than newest wiki edit)"
+    }
+  }
+}
 
-# 5. NotebookLM (reminder/default buckets) - WARN if not set up
-if (Test-Path "$repo\wiki\notebooklm-buckets.json") { Ok "notebooklm-buckets.json present" } else { Warn "wiki/notebooklm-buckets.json missing - buckets not created yet (steps 8.3-8.4)" }
+# 5. NotebookLM - auth check, reminder bucket configured
+if (-not (Test-Path "$repo\wiki\notebooklm-buckets.json")) {
+  Yellow "NotebookLM: wiki/notebooklm-buckets.json missing - buckets not set up"
+} elseif (-not (Test-Path $py)) {
+  Yellow "NotebookLM: python not found"
+} else {
+  & $py -m notebooklm auth check --test 1>$null 2>$null
+  if ($LASTEXITCODE -eq 0) { Green "NotebookLM: authenticated; reminder bucket $($reminder.Substring(0,8)) configured" }
+  else { Yellow "NotebookLM: auth check failed - run 'notebooklm login' (cookie/token may have expired)" }
+}
+
+# 6. Hub Workspace - documented skip (Open Scaffold proprietary, not in use here)
+Green "Hub Workspace - documented skip (Open Scaffold proprietary)"
+
+# 7. Paperclip - documented skip (Open Scaffold proprietary, not in use here)
+Green "Paperclip - documented skip (Open Scaffold proprietary)"
+
+# Skills installed (supporting the protocol)
+$want = "limitless-stack","roll-call","four-tool-lookup","verify-before-claim","karpathy-guidelines","notebooklm","notebooklm-workflow","obsidian-wiki-workflow","end-of-session-checklist","audit-before-claim"
+$missing = @($want | Where-Object { -not (Test-Path "$skills\$_\SKILL.md") })
+if ($missing.Count -eq 0) { Green "Skills: all $($want.Count) installed" }
+else { Yellow "Skills missing: $($missing -join ', ')" }
 
 # --- verdict ---
 Write-Output ""
-$summary = "blocking=$block warnings=$warn"
-if ($block -gt 0)    { Write-Output "RESULT: BLOCK   $summary"; exit 2 }
-elseif ($warn -gt 0) { Write-Output "RESULT: WARN   $summary"; exit 1 }
-else                 { Write-Output "RESULT: READY"; exit 0 }
+Write-Output "  green: $green"
+Write-Output "  yellow: $yellow"
+Write-Output "  red: $red"
+Write-Output ""
+if ($red -gt 0) {
+  Write-Output "VERDICT: BLOCK - $red red finding(s)"
+  Write-Output "Blockers:"
+  $blocks | ForEach-Object { Write-Output "  - $_" }
+  exit 2
+} elseif ($yellow -gt 0) {
+  Write-Output "VERDICT: WARN - $yellow drift finding(s)"
+  Write-Output "Warnings:"
+  $warnings | ForEach-Object { Write-Output "  - $_" }
+  exit 1
+} else {
+  Write-Output "VERDICT: READY - all green"
+  exit 0
+}
