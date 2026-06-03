@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { BugReporter } from "@/components/debug/BugReporter";
 
 export const metadata: Metadata = {
   title: "Vessel Finance",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <main className="flex-1 min-w-0 flex flex-col">{children}</main>
         </div>
+        <BugReporter />
       </body>
     </html>
   );

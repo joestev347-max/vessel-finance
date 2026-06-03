@@ -12,6 +12,7 @@ const NAV = [
   { href: "/revenues",  label: "Revenues",       icon: "+" },
   { href: "/budgets",   label: "Budgets",        icon: "▤" },
   { href: "/forecasts", label: "Forecasts",      icon: "↗" },
+  { href: "/bug-reports", label: "Bug Reports",  icon: "🐞" },
 ];
 
 export function Sidebar() {

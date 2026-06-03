@@ -20,3 +20,13 @@ export type VoyageStatus = (typeof VOYAGE_STATUSES)[number];
 
 export const EXPENSE_STATUSES = ["PENDING", "APPROVED", "PAID", "REJECTED"] as const;
 export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number];
+
+// Self-healing pipeline
+export const BUG_STATUSES = ["pending", "diagnosed", "dispatched", "resolved", "failed"] as const;
+export type BugStatus = (typeof BUG_STATUSES)[number];
+
+export const BUG_SEVERITIES = ["low", "medium", "high", "critical"] as const;
+export type BugSeverity = (typeof BUG_SEVERITIES)[number];
+
+export const SELF_HEAL_STATUSES = ["queued", "running", "completed", "failed"] as const;
+export type SelfHealStatus = (typeof SELF_HEAL_STATUSES)[number];

@@ -116,16 +116,22 @@ anti-patterns log.
 
 ## Self-healing configuration
 
-- **Phase**: staged (templates present, not yet wired)
-- **Self-heal enabled**: false
-- **Bug report storage**: not yet implemented (would be a Prisma `BugReport` model on SQLite)
+- **Phase**: wired (diagnose + repair built). Goes live once the secrets below are set.
+- **Self-heal enabled**: diagnosis runs when `ANTHROPIC_API_KEY` is set; repair dispatch runs when
+  `GITHUB_TOKEN` + `GITHUB_REPO` are set. Auto-merge is OFF — every fix is a human-reviewed PR.
+- **Bug report storage**: Prisma `BugReport` model on SQLite.
+- **Required secrets**: `ANTHROPIC_API_KEY` (runtime diagnosis + Actions repair),
+  `GITHUB_TOKEN` (fine-grained PAT: contents:write, pull-requests:write), `GITHUB_REPO`
+  (`owner/repo`), `SELF_HEAL_CALLBACK_TOKEN` (shared secret, matches the Actions secret),
+  optional `SELF_HEAL_CALLBACK_URL` (public origin for status callbacks). See `SELF-HEAL-SETUP.md`.
 - **Canonical files**:
-  - [x] `/CLAUDE.md` — this file
-  - [x] `/self-heal-templates/` — canonical workflow + agent + setup guide (copied, not yet adapted)
-  - [ ] `/.github/workflows/self-heal.yml`
-  - [ ] `/scripts/self-heal-agent.js`
-  - [ ] In-app bug reporter + diagnostic API route
-  - See `self-heal-templates/SELF-HEAL-SETUP.md` and `self-heal-templates/VESSEL-FINANCE-NOTES.md`.
+  - [x] `/CLAUDE.md` — this file (trust anchor; the diagnostic + repair agents read it)
+  - [x] `/SELF-HEAL-SETUP.md` — operator setup + required secrets
+  - [x] `/.github/workflows/self-heal.yml` — repair workflow (repository_dispatch)
+  - [x] `/scripts/self-heal-agent.mjs` — sandboxed repair agent (tool whitelist, 25-turn budget)
+  - [x] In-app bug reporter (`src/components/debug/BugReporter.tsx`) + admin (`/bug-reports`)
+  - [x] API: `/api/bug-reports` (capture+diagnose), `/api/bug-reports/[id]/dispatch`, `/api/self-heal/callback`
+  - [x] `BugReport` Prisma model
 
 ## Don't
 

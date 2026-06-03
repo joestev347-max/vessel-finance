@@ -144,3 +144,29 @@ model Revenue {
 
   @@index([vesselId, recognitionDate])
 }
+
+// Self-healing pipeline. SQLite has no JSONB, so JSON payloads are stored as TEXT
+// (stringified) and parsed at the edges. Status/severity are String + literal unions
+// (see src/lib/domain.ts), consistent with the rest of the schema.
+model BugReport {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  description      String
+  pageRoute        String?
+  contextBundle    String?  // JSON as TEXT: console logs, network, recent actions, viewport
+  status           String   @default("pending") // pending | diagnosed | dispatched | resolved | failed
+  diagnosis        String?  // JSON as TEXT: { root_cause, suspected_files, proposed_fix, narrative }
+  severity         String?  // low | medium | high | critical
+  confidence       String?  // low | medium | high
+  diagnosisTokens  String?  // JSON as TEXT: { input, output }
+  diagnosisMs      Int?
+  selfHealStatus   String?  // queued | running | completed | failed
+  selfHealRunId    String?
+  selfHealBranch   String?
+  selfHealPrUrl    String?
+  selfHealPrNumber Int?
+  resolutionNotes  String?
+  updatedAt        DateTime @updatedAt
+
+  @@index([status, createdAt])
+}

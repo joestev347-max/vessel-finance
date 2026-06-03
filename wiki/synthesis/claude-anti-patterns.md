@@ -42,3 +42,10 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Why it's tempting**: The empty result reads like success or failure with nothing to show.
 - **Why it's wrong**: Live stdout capture is unreliable here. The command actually ran; the output just wasn't streamed back.
 - **Corrective rule**: Redirect command output to a file (`… *> out.txt` / `Out-File`) and read the file with the Read tool. For long jobs, write a sentinel `*.done` file at the end and poll for it.
+
+## 5. `npm install` that drops devDependencies → build fails on `tailwindcss` / `@/` not resolving
+
+- **Trigger pattern**: After an `npm install <pkg>`, `next build` fails with `Module not found: Can't resolve '@/components/...'` (cascading on the alphabetically-first pages) and ultimately `Cannot find module 'tailwindcss'`. `npm install` reports a suspiciously low package count (~81 vs ~167).
+- **Why it's tempting**: The `@/` errors look like a path-alias/tsconfig problem, sending you to fix `next.config.js` aliases — a red herring.
+- **Why it's wrong**: The real cause is **missing devDependencies**. If `NODE_ENV=production` is in the environment (or an `omit=dev` is in effect), `npm install` skips devDeps — and `tailwindcss`, `typescript`, `postcss`, `autoprefixer`, `tsx`, `prisma` all live in `devDependencies`. Without tailwind, CSS processing fails; the alias/CSS errors are downstream symptoms. The "audited N packages" count is the tell (prod-only install ≈ half the packages).
+- **Corrective rule**: Reinstall with dev deps: `npm install --include=dev` (and unset/clear `NODE_ENV` for the install). Confirm `node_modules/tailwindcss` exists before building. A production-only `node_modules` cannot build this app — `next build` needs the dev toolchain.

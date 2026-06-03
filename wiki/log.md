@@ -77,3 +77,21 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   @ 0.833. Semantic recall working.
 - **All four memory layers are now live**: Obsidian wiki + NotebookLM (reminder/default buckets) +
   Pinecone + CLAUDE.md. Limitless Stack install (steps 8.1–8.5) complete on Windows.
+
+## [2026-06-02] schema | Self-healing pipeline built (diagnose + repair)
+
+- Built the full self-heal loop (onboarding Section 4). **Diagnose**: `BugReport` Prisma model;
+  in-app 🐞 reporter widget (`BugReporter`, mounted in layout) capturing route/viewport/recent JS
+  errors; `POST /api/bug-reports` runs a Claude diagnostic with `CLAUDE.md` as system prompt
+  (`src/lib/self-heal/diagnose.ts`) and persists severity/confidence/root-cause/suspected-files;
+  `/bug-reports` admin page. **Repair**: `scripts/self-heal-agent.mjs` (sandboxed, tool-whitelist,
+  25-turn) + `.github/workflows/self-heal.yml` (repository_dispatch → PR);
+  `POST /api/bug-reports/[id]/dispatch` and `POST /api/self-heal/callback`.
+- Added `@anthropic-ai/sdk`. Graceful degradation: no `ANTHROPIC_API_KEY` → store-and-skip; no
+  GitHub secrets → dispatch button disabled. Auto-merge OFF. Setup + secrets in `SELF-HEAL-SETUP.md`.
+- Hit anti-pattern #5 (a prior `npm install` had dropped devDependencies → build failed on
+  `tailwindcss` with red-herring `@/` errors). Fixed with `npm install --include=dev`. Added an
+  explicit `@`→`src` webpack alias in `next.config.js` as belt-and-suspenders.
+- Verified: production build exit 0; `/bug-reports` and existing pages return HTTP 200.
+- **Onboarding is now functionally complete**: only Hub Workspace + Paperclip remain, which are
+  Open Scaffold proprietary products (not replicable). Self-heal goes live once its secrets are set.
