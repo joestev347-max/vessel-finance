@@ -95,3 +95,15 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
 - Verified: production build exit 0; `/bug-reports` and existing pages return HTTP 200.
 - **Onboarding is now functionally complete**: only Hub Workspace + Paperclip remain, which are
   Open Scaffold proprietary products (not replicable). Self-heal goes live once its secrets are set.
+
+## [2026-06-02] refactor | Roll Call auto-start + richer preflight
+
+- Added a Claude Code `SessionStart` hook (`.claude/settings.json`) that runs `tools/preflight.ps1`
+  automatically. Confirmed it fires in the Claude Code CLI; **Cowork does not run Claude Code
+  hooks**, so in Cowork the `roll-call` skill + `CLAUDE.md` banner are the (soft) triggers.
+- Rewrote the `roll-call` skill to mirror the reference setup, adapted to Windows/Desktop Commander,
+  our bucket IDs (reminder `202e85d1…`), and Hub Workspace/Paperclip as documented skips.
+- Upgraded `tools/preflight.ps1`: 7-tool structure, Pinecone **sync-drift** check (last sync vs.
+  newest wiki edit), NotebookLM `auth check --test`, green/yellow/red verdict format.
+- Caught a real self-inflicted bug: the preflight didn't set `PATHEXT`, so `& python.exe`/`& git.exe`
+  silently failed (anti-pattern #1) → false negatives on Pinecone/NotebookLM. Fixed.
