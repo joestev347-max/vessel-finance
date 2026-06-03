@@ -15,9 +15,10 @@ Exit 0 = READY, 1 = WARN (proceed with eyes open), 2 = BLOCK (fix first). Then r
 `wiki/index.md`, and — once NotebookLM is set up — query the reminder bucket (the
 `notebooklm-workflow` skill).
 
-**End — wrap.** Update `wiki/log.md`, commit (ask first, per `CLAUDE.md`), then sync the memory
-layers: `python tools\pinecone-sync.py --changed-only` and the NotebookLM refresh+verify from the
-`notebooklm-workflow` skill. The next session's Roll Call catches anything skipped here.
+**End — run the end-of-session checklist.** Say **"run end of session checklist"** to fire the
+`end-of-session-checklist` skill. It walks the wrap in order: update `wiki/log.md`, capture any new
+anti-patterns, **sync Pinecone** (`pinecone-sync.py --changed-only`), refresh + verify the
+NotebookLM buckets, then commit (ask first). The next session's Roll Call catches anything skipped.
 
 ## Core moves
 
@@ -44,31 +45,41 @@ to `wiki/synthesis/lint-YYYY-MM-DD.md`.
 `wiki/synthesis/claude-anti-patterns.md` (trigger → why-tempting → why-wrong → corrective rule).
 Future sessions read it via Roll Call and the reminder bucket.
 
-## Schedule nightly Pinecone sync (Windows Task Scheduler)
+## Pinecone sync — at session end (preferred)
 
-The upstream guide uses cron; the Windows equivalent is `schtasks`. After Pinecone is set up
-(see `LIMITLESS-STACK-SETUP.md`), register a nightly changed-only sync:
+The Pinecone sync runs **as part of the end-of-session checklist** (step 3 of the
+`end-of-session-checklist` skill), not on a blind nightly timer. We sync when we wrap, so the index
+always reflects the work just done. The command it runs:
+
+```
+python tools\pinecone-sync.py --changed-only
+```
+
+*Optional fallback — a nightly timer.* If you also want an unattended nightly sync (e.g. for days
+you forget to wrap), register a Windows Task Scheduler job (requires `PINECONE_API_KEY` set at User
+level via `setx`):
 
 ```
 schtasks /Create /TN "vessel-finance pinecone sync" /SC DAILY /ST 02:00 ^
   /TR "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$env:PINECONE_API_KEY=[Environment]::GetEnvironmentVariable('PINECONE_API_KEY','User'); python 'C:\Users\joest\vessel-finance\tools\pinecone-sync.py' --changed-only\""
 ```
 
-(Requires `PINECONE_API_KEY` set at the User level via `setx`.) Remove with
-`schtasks /Delete /TN "vessel-finance pinecone sync" /F`.
+Remove with `schtasks /Delete /TN "vessel-finance pinecone sync" /F`.
 
 ## Customization checklist (from the onboarding guide)
 
 What the guide says to change when adopting the stack, and its status here:
 
-- **Pinecone index name** - set via `PINECONE_INDEX` env (default `vessel-finance`). [tooling ready]
-- **NotebookLM bucket IDs** - recorded in `wiki/notebooklm-buckets.json` after setup. [pending login]
+- **Pinecone index name** - `vessel-finance` (override via `PINECONE_INDEX` env). [done, index live]
+- **NotebookLM bucket IDs** - recorded in `wiki/notebooklm-buckets.json`. [done, buckets live]
 - **CLAUDE.md domain** - already tailored to vessel-finance (maritime fleet finance). [done]
 - **Wiki entity links** - real pages under `wiki/entities/`, `wiki/concepts/`. [done, grows over time]
 - **Sources in `raw/`** - drop your own source docs here to ingest. [folder ready]
 - **Keep as-is** - the installed skills, the wiki structure, and the `CLAUDE.md` guardrails.
 
-## What still needs your accounts
+## Status
 
-Pinecone (API key) and NotebookLM (Google login + two buckets) are the only pieces not yet live.
-Full status and exact steps: `LIMITLESS-STACK-SETUP.md`.
+All four memory layers are live: Obsidian wiki + NotebookLM (reminder/default buckets) + Pinecone
+(`vessel-finance` index) + `CLAUDE.md`. The only opt-in piece left is the self-healing pipeline
+(staged in `self-heal-templates/` — see `VESSEL-FINANCE-NOTES.md`). Full status:
+`LIMITLESS-STACK-SETUP.md`.
