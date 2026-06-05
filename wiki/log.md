@@ -132,3 +132,12 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   in reminder bucket, log.md replaced in default bucket — verified by reminder-bucket query
   quoting anti-pattern #7 verbatim. Gotcha: `source delete-by-title` hangs (interactive confirm);
   use `source delete <id> --notebook <nb> -y`.
+
+## [2026-06-04] schema | end-of-session-checklist must load the notebooklm skill for step 4
+
+- Per Joseph: future sessions must use the **`notebooklm`** skill (CLI reference) when running the
+  end-of-session checklist — no improvised CLI syntax. Edited
+  `~/.claude/skills/end-of-session-checklist/SKILL.md`: step 4 now requires loading both
+  `notebooklm-workflow` (ritual) and `notebooklm` (commands), documents the
+  `delete-by-title` hang, and prescribes `source delete <id> --notebook <nb> -y`. Frontmatter
+  description updated to match. Cowork surfaces the edited skill starting with the next session.
