@@ -47,6 +47,8 @@ Knowledge base for the Vessel Finance repo, maintained with the LLM Wiki pattern
 - [[synthesis/claude-anti-patterns]] — accumulating list of failure modes + corrective rules.
 - [[synthesis/tugos-whitepaper-audit]] — verified/refuted/internal-contradiction audit of the
   TugOS docs + corrected route to top-of-class (Helm CONNECT, Subchapter M, AIS licensing, CII).
+- [[synthesis/tugos-build-gameplan]] — pointer to `docs/tugos-build-gameplan.pdf`: phased build
+  order, gates, risk register with preventions, kill/pivot criteria, WAV north-star metric.
 
 ## See also (authoritative repo docs)
 

@@ -168,6 +168,37 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   Sub M, fix AIS licensing + tenant isolation, drop CII, test the 85%-legacy assumption in
   Phase 1 interviews).
 
+## [2026-06-04] refactor | TugOS docs recreated as v2 with audit corrections folded in
+
+- Committed + pushed the ingest/audit work (f9f7ea2, 11 files).
+- Per Joseph: recreated both north-star docs as clean v2 PDFs (reportlab), corrections folded in
+  seamlessly: `docs/tugos-whitepaper-v2.pdf` (8 pp) and `docs/tugos-osl-architecture-v2.pdf`
+  (5 pp). Verified by text extraction: Helm CONNECT positioning (Tier 0 incumbent), Subchapter
+  M/TSMS as the compliance core, CC BY-NC AIS toolbox excluded (commercial AIS APIs instead),
+  CII dropped (>=5,000 GT only), one reconciled stack (React 19 + Vite + Express + dedicated
+  Supabase project for tenant isolation), offline refresh-token auth design, 90/30/7 windows,
+  domain-expert hire kept (advisor + Catalog hybrid), marketplace gated on a liquidity
+  hypothesis, market figures stated as cross-firm ranges ($1.2–2.4B, 10–17.5%).
+- [[concepts/tugos]] updated: v2 PDFs are the operative north star; v1 PDFs remain immutable in
+  `raw/`.
+
+## [2026-06-04] query | TugOS Build Gameplan v1.0 written + audited
+
+- Per Joseph: comprehensive build gameplan referencing the Architecture Blueprint v2 —
+  `docs/tugos-build-gameplan.pdf` (9 pp; generator `tools/make-tugos-gameplan.py`), pointer page
+  [[synthesis/tugos-build-gameplan]]. Defines best-in-class as 6 measurable outcomes (north star:
+  Weekly Active Vessels), maps build order to blueprint components, sets 4 phase gates with
+  pre-committed pass/fail actions, 24-risk register (prevention + early-warning + contingency per
+  risk), kill/pivot criteria, measurement system, governance cadence, and an audit-record section.
+- New verifications this pass: **Vercel serverless cannot host WebSockets** (blueprint's live job
+  board re-specified onto Supabase Realtime with Fly.io fallback); **DocuSeal is AGPLv3 with
+  Section 7(b) terms + commercial Pro option** (embedding/API for production is a paid feature —
+  cleanest resolution is buying the Pro license).
+- Audit-before-claim applied: doc separates verified facts (Helm, Sub M, CII, AIS license,
+  46 USC 8904/46 CFR 15.1111, Vercel WS, market ranges) from working assumptions (H1–H4, pricing,
+  all gate thresholds = judgments). PDF content verified by text extraction (all 13 sections +
+  key terms render).
+
 ## [2026-06-04] schema | end-of-session-checklist must load the notebooklm skill for step 4
 
 - Per Joseph: future sessions must use the **`notebooklm`** skill (CLI reference) when running the

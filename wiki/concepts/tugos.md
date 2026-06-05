@@ -11,9 +11,17 @@ sources: [openscaffold-tugboat-whitepaper, tugos-osl-architecture]
 
 The purpose-built, mobile-first SaaS platform for tugboat and inland marine towing operators that
 this project is working toward. **[[overview|Vessel Finance]] is the prototype; TugOS is the
-destination.** The north-star documents are [[sources/openscaffold-tugboat-whitepaper]] (market
-case, pillars, 36-month gameplan) and [[sources/tugos-osl-architecture]] (the build blueprint on
-the [[concepts/osl-orchestrator-model|OSL Orchestrator Model]]).
+destination.**
+
+> [!note] Operative documents are the v2 PDFs (2026-06-04)
+> After the audit ([[synthesis/tugos-whitepaper-audit]]), both docs were recreated with the
+> corrections folded in: **`docs/tugos-whitepaper-v2.pdf`** and
+> **`docs/tugos-osl-architecture-v2.pdf`**. These are the north star going forward. The v1 PDFs in
+> `raw/` remain as immutable originals; the source pages below describe v1.
+
+Original (v1) documents: [[sources/openscaffold-tugboat-whitepaper]] (market case, pillars,
+36-month gameplan) and [[sources/tugos-osl-architecture]] (the build blueprint on the
+[[concepts/osl-orchestrator-model|OSL Orchestrator Model]]).
 
 ## The opportunity in one paragraph
 
