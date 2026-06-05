@@ -1,7 +1,7 @@
 ---
 type: synthesis
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 ---
 
 # Claude Anti-Patterns — Vessel Finance
@@ -56,3 +56,10 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Why it's tempting**: The hook works in the Claude Code CLI, so it's easy to claim "Roll Call now runs automatically everywhere."
 - **Why it's wrong**: `SessionStart` hooks are a **Claude Code CLI** feature; the Cowork desktop app does not execute them. And a skill installed to `~/.claude/skills/` mid-session is **not surfaced** into Cowork's available-skills list until a *new* session starts — so it can't be invoked in the session that installed it. In Cowork the only triggers are soft: the skill description (once surfaced) and the `CLAUDE.md` banner, both of which depend on the model choosing to act.
 - **Corrective rule**: Don't promise hard auto-execution in Cowork. For a guaranteed trigger, use the Claude Code CLI (where the hook fires) or say "roll call" manually. After installing a skill, verify it's surfaced in a **new** session before relying on it. State the Cowork-vs-CLI distinction honestly rather than overclaiming.
+
+## 7. Double quotes get mangled in Desktop Commander commands (cmd and PowerShell both)
+
+- **Trigger pattern**: A command containing double quotes fails bizarrely: `git commit -m "fix: my message"` parses each word as a pathspec (`error: pathspec 'my' did not match`); a quoted exe path in cmd becomes `'\"C:\Program Files\...\gh.exe\"' is not recognized`; an inline `python -c "..."` dies with `SyntaxError: unterminated string literal`. Separately, PowerShell's `Compress-Archive` writes zip entries with backslash separators that strict unzippers (e.g. Cowork's .skill installer) reject.
+- **Why it's tempting**: The same command works fine when typed into a real terminal, so the failure looks like a git/python/gh problem.
+- **Why it's wrong**: Desktop Commander escapes or strips double quotes in transit on this machine, so anything depending on `"..."` survives only by luck. The tool isn't broken — the quoting is.
+- **Corrective rule**: Avoid double quotes in `start_process` commands. Multi-word commit messages → `git commit -F msgfile.txt`. Inline scripts → write a `.py`/`.ps1` file first, then run it by path. In PowerShell prefer single quotes. For zips that other tools must read, use Python `zipfile` (forward slashes), not `Compress-Archive`.

@@ -107,3 +107,28 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   newest wiki edit), NotebookLM `auth check --test`, green/yellow/red verdict format.
 - Caught a real self-inflicted bug: the preflight didn't set `PATHEXT`, so `& python.exe`/`& git.exe`
   silently failed (anti-pattern #1) → false negatives on Pinecone/NotebookLM. Fixed.
+
+## [2026-06-04] setup | Self-heal activated end-to-end + audit-before-claim installed in Cowork
+
+- **Self-heal is live** (SELF-HEAL-SETUP.md steps 1–4). App `.env`: `ANTHROPIC_API_KEY`,
+  `GITHUB_TOKEN` (fine-grained PAT, contents+PR write), `GITHUB_REPO`, generated
+  `SELF_HEAL_CALLBACK_TOKEN`. Actions secrets: `ANTHROPIC_API_KEY` + `SELF_HEAL_CALLBACK_TOKEN`.
+- Verified: test bug → diagnosed in 5.7s (status `diagnosed`, coherent JSON). Dispatch → workflow
+  run 26989504900 succeeded in 51s; agent `applied_fix=false` (correct for a synthetic bug), no PR
+  opened. **Callback delivery leg untested** — GitHub can't reach localhost; test report sits at
+  `dispatched/queued` until manually closed. PR-open leg fires only when the agent edits code.
+- Gotcha: PAT initially lacked Contents:write → 403 on `repository_dispatch`
+  (`X-Accepted-GitHub-Permissions: contents=write` was the diagnostic tell). Fixed by editing the
+  token's permissions in place — token value unchanged.
+- Bumped `actions/checkout` + `actions/setup-node` to v5 in `self-heal.yml` (both declare
+  `using: node24`; GitHub forces Node 24 June 16, 2026). Commit `4316b85`, pushed.
+- **Roll Call soft trigger confirmed in Cowork**: fired on a bare "hey claude" in a fresh session —
+  the open question from the 2026-06-02 handoff is answered (refines anti-pattern #6: once the
+  skill is surfaced in a new session, the soft trigger does work).
+- Packaged `audit-before-claim` as a `.skill` zip and installed it into Cowork (verified surfaced
+  in the session's available-skills list). First package attempt failed: PowerShell
+  `Compress-Archive` backslash entries — see anti-pattern #7.
+- Wrap: Pinecone synced (wiki: 2 files / 14 chunks). NotebookLM refreshed: anti-patterns replaced
+  in reminder bucket, log.md replaced in default bucket — verified by reminder-bucket query
+  quoting anti-pattern #7 verbatim. Gotcha: `source delete-by-title` hangs (interactive confirm);
+  use `source delete <id> --notebook <nb> -y`.
