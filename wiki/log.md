@@ -133,6 +133,41 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   quoting anti-pattern #7 verbatim. Gotcha: `source delete-by-title` hangs (interactive confirm);
   use `source delete <id> --notebook <nb> -y`.
 
+## [2026-06-04] ingest | TugOS whitepaper + architecture blueprint (project north star)
+
+- Joseph uploaded two OSL docs and designated them **the project whitepaper we follow to the end
+  goal**: the TugOS Industry Vertical White Paper (16 pp) and the TugOS OSL Architecture Blueprint
+  (9 pp). Saved immutably to `raw/openscaffold-tugboat-whitepaper.pdf` and
+  `raw/tugos-osl-architecture.pdf`.
+- Read both fully; created source pages (`sources/openscaffold-tugboat-whitepaper`,
+  `sources/tugos-osl-architecture`), the north-star app page `concepts/tugos` (pillars, 36-month
+  roadmap, target architecture, prototype-vs-target stack warning), and
+  `concepts/osl-orchestrator-model`. Updated `entities/open-scaffold-labs` (23-app ecosystem,
+  Open Agency lineage), `overview` (project-direction callout), and the index.
+- Flagged two warnings in `concepts/tugos`: (1) target stack is Supabase/Express/React 19 vs our
+  SQLite/Prisma/Next.js prototype — no migration unless explicitly asked; (2) whitepaper says hire
+  a maritime domain expert, blueprint says Catalog of Authority replaces the expert — reconcile
+  later.
+
+## [2026-06-04] query | Audit of the TugOS whitepaper + blueprint (audit-before-claim)
+
+- Joseph asked whether the TugOS docs are the best route to top-of-class. Ran a web-verified
+  audit; filed [[synthesis/tugos-whitepaper-audit]] and added a warning callout to
+  [[concepts/tugos]] + index entry.
+- **Refuted**: "no product owns the tug vertical" (Helm CONNECT, 275+ companies, Foss Maritime
+  reference, sells Sub M compliance — omitted entirely); MarineTraffic AIS Toolbox as commercial
+  foundation (CC BY-NC-SA 4.0, density-map tool); CII reporting for tugs (applies ≥5,000 GT);
+  whitepaper's "33 CFR Part 15" rest-hour cite (actual: 46 CFR 15.1111 / 46 USC 8904).
+- **Critical gap**: 46 CFR Subchapter M / TSMS never mentioned in either doc.
+- **Internal contradictions**: two different stacks+auth (Next.js/Hono/Supabase-Auth vs
+  React19/Vite/Express/JWT-15min); RLS isolation vs shared-instance direct SQL across 23 apps;
+  offline-first vs 15-min tokens; hire-domain-expert vs EaaS; 90/30/7 vs 90/60/30.
+- **Verified**: $2.4B/17.5% traces to market.us but is the most optimistic of ~6 firms
+  ($1.2–2.3B, 10–12.5% elsewhere); BargeOps, Signal K, Flectra, OpenCPN claims accurate.
+- Verdict: playbook shape is sound; follow it **with corrections** (reposition vs Helm, center
+  Sub M, fix AIS licensing + tenant isolation, drop CII, test the 85%-legacy assumption in
+  Phase 1 interviews).
+
 ## [2026-06-04] schema | end-of-session-checklist must load the notebooklm skill for step 4
 
 - Per Joseph: future sessions must use the **`notebooklm`** skill (CLI reference) when running the

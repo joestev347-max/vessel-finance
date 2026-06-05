@@ -1,7 +1,7 @@
 ---
 type: overview
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 ---
 
 # Vessel Finance Wiki — Index
@@ -12,6 +12,8 @@ Knowledge base for the Vessel Finance repo, maintained with the LLM Wiki pattern
 ## App
 
 - [[overview]] — what Vessel Finance is, stack, status, build/run.
+- [[concepts/tugos]] — **TugOS, the end goal**: pillars, 36-month roadmap, target architecture,
+  and the prototype-vs-target stack warning. North star for the whole project.
 - [[synthesis/data-model]] — the seven Prisma models and how they relate.
 
 ## Concepts
@@ -23,6 +25,8 @@ Knowledge base for the Vessel Finance repo, maintained with the LLM Wiki pattern
 - [[concepts/forecasting]] — the three forecasting methods.
 - [[concepts/budget-transfers]] — drag-and-drop budget transfers.
 - [[concepts/self-healing-pipeline]] — the staged self-heal loop.
+- [[concepts/osl-orchestrator-model]] — OSL's reusable vertical-SaaS architecture (genetic
+  template, three surfaces, Catalog of Authority, governed agents).
 
 ## Entities
 
@@ -32,11 +36,17 @@ Knowledge base for the Vessel Finance repo, maintained with the LLM Wiki pattern
 
 - [[sources/limitless-stack-onboarding]] — the v1.0 onboarding PDF.
 - [[sources/karpathy-llm-wiki-video]] — origin of the LLM Wiki pattern.
+- [[sources/openscaffold-tugboat-whitepaper]] — **the project whitepaper** (market, pillars,
+  go-to-market, 36-month gameplan). Raw: `raw/openscaffold-tugboat-whitepaper.pdf`.
+- [[sources/tugos-osl-architecture]] — TugOS build blueprint on the OSL Orchestrator Model.
+  Raw: `raw/tugos-osl-architecture.pdf`.
 
 ## Synthesis
 
 - [[synthesis/data-model]] — schema reference.
 - [[synthesis/claude-anti-patterns]] — accumulating list of failure modes + corrective rules.
+- [[synthesis/tugos-whitepaper-audit]] — verified/refuted/internal-contradiction audit of the
+  TugOS docs + corrected route to top-of-class (Helm CONNECT, Subchapter M, AIS licensing, CII).
 
 ## See also (authoritative repo docs)
 

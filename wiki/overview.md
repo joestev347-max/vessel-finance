@@ -1,13 +1,21 @@
 ---
 type: app
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 ---
 
 # Vessel Finance — Overview
 
 Maritime fleet financial-management prototype. Executive dashboards, expense tracking,
 drag-and-drop budget transfers, per-vessel profitability, and revenue/expense forecasting.
+
+> [!note] Project direction (2026-06-04)
+> The end goal is **[[concepts/tugos|TugOS]]** — OSL's full tugboat-operations platform. The
+> project whitepaper ([[sources/openscaffold-tugboat-whitepaper]]) and architecture blueprint
+> ([[sources/tugos-osl-architecture]]) in `raw/` are the north-star documents we follow. Vessel
+> Finance covers roughly Pillar 6 of eight (Financial Reporting & Fleet P&L); the stack-migration
+> question (SQLite/Prisma → Supabase/Express) is flagged in [[concepts/tugos]] and stays untouched
+> until Joseph calls it.
 
 - **Vertical**: Maritime / shipping fleet finance
 - **Stack**: Next.js 14 (App Router) + TypeScript + Prisma + SQLite + Tailwind + @dnd-kit + Recharts
