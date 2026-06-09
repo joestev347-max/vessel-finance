@@ -64,6 +64,71 @@ try {
   r = await fetch(`${base}/vessels`, { headers: auth });
   body = (await r.json()) as { vessels?: unknown[] };
   check('GET /vessels now returns exactly 1', body.vessels?.length === 1, `len=${body.vessels?.length}`);
+  const vesselId = created.vessel?.id ?? '';
+
+  // Clients
+  r = await fetch(`${base}/clients`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ name: 'Gulf Shipping LLC', billing_email: 'ap@gulf.test' }),
+  });
+  const clientCreated = (await r.json()) as { client?: { id?: string } };
+  check('POST /clients -> 201', r.status === 201, `status=${r.status}`);
+  const clientId = clientCreated.client?.id ?? '';
+
+  // Crew
+  r = await fetch(`${base}/crew`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ full_name: 'Sam Deckhand', rank: 'deckhand' }),
+  });
+  check('POST /crew -> 201', r.status === 201, `status=${r.status}`);
+
+  // Job referencing the same-company vessel + client (composite FK must allow it)
+  r = await fetch(`${base}/jobs`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ vessel_id: vesselId, client_id: clientId, status: 'scheduled' }),
+  });
+  check('POST /jobs (same-tenant refs) -> 201', r.status === 201, `status=${r.status}`);
+
+  // Job referencing a random (other-company) vessel id must be rejected (FK)
+  r = await fetch(`${base}/jobs`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ vessel_id: '00000000-0000-0000-0000-0000000000ff' }),
+  });
+  check('POST /jobs with foreign vessel_id -> 400', r.status === 400, `status=${r.status}`);
+
+  r = await fetch(`${base}/jobs`, { headers: auth });
+  const jobsBody = (await r.json()) as { jobs?: unknown[] };
+  check('GET /jobs returns exactly 1', jobsBody.jobs?.length === 1, `len=${jobsBody.jobs?.length}`);
+
+  // User provisioning: fleet_admin creates a dispatcher
+  r = await fetch(`${base}/users`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ email: 'dispatch@demo.test', full_name: 'Dee Dispatcher', role: 'dispatcher', password: 'DispatchPass123!' }),
+  });
+  check('POST /users (fleet_admin) -> 201', r.status === 201, `status=${r.status}`);
+
+  // The new dispatcher can log in
+  r = await fetch(`${base}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'dispatch@demo.test', password: 'DispatchPass123!' }),
+  });
+  const dispatchLogin = (await r.json()) as { token?: string; role?: string };
+  check('provisioned dispatcher can log in', r.status === 200 && dispatchLogin.role === 'dispatcher', `status=${r.status} role=${dispatchLogin.role}`);
+  const dispatchAuth = { authorization: `Bearer ${dispatchLogin.token ?? ''}` };
+
+  // Role gate: dispatcher cannot provision users
+  r = await fetch(`${base}/users`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...dispatchAuth },
+    body: JSON.stringify({ email: 'x@demo.test', role: 'crew', password: 'whatever123' }),
+  });
+  check('dispatcher POST /users -> 403', r.status === 403, `status=${r.status}`);
 } catch (err) {
   failures++;
   results.push('FAIL exception :: ' + (err as Error).message);

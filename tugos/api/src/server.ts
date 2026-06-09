@@ -3,8 +3,13 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
+import { errorHandler } from './http.js';
 import { authRouter } from './routes/auth.js';
+import { usersRouter } from './routes/users.js';
 import { vesselsRouter } from './routes/vessels.js';
+import { clientsRouter } from './routes/clients.js';
+import { crewRouter } from './routes/crew.js';
+import { jobsRouter } from './routes/jobs.js';
 
 export function createApp() {
   const app = express();
@@ -25,7 +30,13 @@ export function createApp() {
   app.get('/health', (_req, res) => res.json({ ok: true }));
   app.use('/auth/login', loginLimiter);
   app.use('/auth', authRouter);
+  app.use('/users', usersRouter);
   app.use('/vessels', vesselsRouter);
+  app.use('/clients', clientsRouter);
+  app.use('/crew', crewRouter);
+  app.use('/jobs', jobsRouter);
+
+  app.use(errorHandler); // terminal error handler — must be last
 
   return app;
 }
