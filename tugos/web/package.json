@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview --port 4173"
+    "preview": "vite preview --port 4173",
+    "e2e:ui": "node e2e/uiverify.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

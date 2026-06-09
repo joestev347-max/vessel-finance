@@ -14,6 +14,13 @@ export interface Job {
   scheduled_at: string | null;
   created_at: string;
 }
+export interface CrewMember { id: string; full_name: string; rank: string | null; created_at: string; }
+export interface User { id: string; email: string; full_name: string | null; role: string; created_at: string; }
+
+export const ROLES = [
+  'fleet_admin', 'port_captain', 'dispatcher', 'captain', 'crew', 'billing', 'client',
+] as const;
+export type Role = (typeof ROLES)[number];
 
 export class ApiError extends Error {
   status: number;
@@ -61,4 +68,10 @@ export const api = {
     req<{ job: Job }>('/jobs', { method: 'POST', body: JSON.stringify(j) }),
   setJobStatus: (id: string, status: Status) =>
     req<{ job: Job }>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  listCrew: () => req<{ crew: CrewMember[] }>('/crew'),
+  createCrew: (c: { full_name: string; rank?: string }) =>
+    req<{ crew: CrewMember }>('/crew', { method: 'POST', body: JSON.stringify(c) }),
+  listUsers: () => req<{ users: User[] }>('/users'),
+  createUser: (u: { email: string; full_name?: string; role: Role; password: string }) =>
+    req<{ user: User }>('/users', { method: 'POST', body: JSON.stringify(u) }),
 };

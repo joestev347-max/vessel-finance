@@ -27,18 +27,17 @@ const STATUS_LABEL: Record<Status, string> = {
   cancelled: 'Cancelled',
 };
 
-export function Dispatch({ role, onLogout }: { role: string; onLogout: () => void }) {
+export function Dispatch({ onError, onLogout }: { onError: (m: string) => void; onLogout: () => void }) {
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   const vesselName = useMemo(() => new Map(vessels.map((v) => [v.id, v.name])), [vessels]);
   const clientName = useMemo(() => new Map(clients.map((c) => [c.id, c.name])), [clients]);
 
   const reload = useCallback(async () => {
-    setError('');
+    onError('');
     try {
       const [v, c, j] = await Promise.all([api.listVessels(), api.listClients(), api.listJobs()]);
       setVessels(v.vessels);
@@ -49,11 +48,11 @@ export function Dispatch({ role, onLogout }: { role: string; onLogout: () => voi
         onLogout();
         return;
       }
-      setError(err instanceof Error ? err.message : 'failed to load');
+      onError(err instanceof Error ? err.message : 'failed to load');
     } finally {
       setLoading(false);
     }
-  }, [onLogout]);
+  }, [onError, onLogout]);
 
   useEffect(() => {
     void reload();
@@ -64,25 +63,13 @@ export function Dispatch({ role, onLogout }: { role: string; onLogout: () => voi
       await api.setJobStatus(id, status);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'update failed');
+      onError(err instanceof Error ? err.message : 'update failed');
     }
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">TugOS — Dispatch board</h1>
-          <p className="text-sm text-slate-400">Signed in{role ? ` as ${role}` : ''}</p>
-        </div>
-        <button onClick={onLogout} className="rounded-md bg-slate-700 px-3 py-1.5 text-sm hover:bg-slate-600">
-          Sign out
-        </button>
-      </header>
-
-      {error && <p className="mb-4 rounded-md bg-red-900/50 px-3 py-2 text-sm text-red-200 ring-1 ring-red-700">{error}</p>}
-
-      <NewJobForm vessels={vessels} clients={clients} onCreated={reload} onError={setError} />
+    <div>
+      <NewJobForm vessels={vessels} clients={clients} onCreated={reload} onError={onError} />
 
       {loading ? (
         <p className="text-slate-400">Loading…</p>
