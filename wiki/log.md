@@ -251,3 +251,31 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   use a `tug_app`-privileged connection that sets `app.company_id` per transaction (NOT the
   bypass-RLS `postgres`/service role).
 - New anti-patterns captured (#9, #10).
+
+## [2026-06-09] schema | TugOS Surface 2 (REST API) built + verified live
+
+- Built **Surface 2** under `tugos/api/` (Express 4 + TypeScript, ESM): tenant-scoped DB layer
+  (`withTenant` → `BEGIN; set_config('app.company_id',…,true); … COMMIT`), JWT+bcrypt auth
+  (`bcryptjs`, 15-min tokens), `authenticate`/`requireRole` middleware, and routes for
+  `auth/login`, `users` (provision+list), `vessels`, `clients`, `crew`, `jobs`. Async-safe via an
+  `asyncHandler` wrapper + terminal error middleware (Express 4 doesn't catch async rejections).
+- Provisioned a dedicated **`tug_api`** login role (inherits `tug_app`, `bypassrls=false`) for the
+  app's tenant-scoped connection. Login bootstrap uses a SECURITY DEFINER lookup moved to a
+  **`private` schema** (migration 0005) after the advisor flagged it was exposed over PostgREST
+  (`/rest/v1/rpc`) returning password hashes — see anti-pattern #11.
+- Migrations applied live (0001–0005), all via the Supabase MCP. Security advisor: **0 findings**.
+- Hardened `/auth/login`: helmet, configurable CORS, `express-rate-limit` (10/15min), 100kb body
+  cap, `trust proxy`.
+- **Verified end-to-end against the live project** (project `TUGOS`, role `tug_api`): a self-cleaning
+  e2e (`src/e2e.ts`) seeded a demo company/user, then exercised login (200 + JWT, 401s), vessel/
+  client/crew/job create, a foreign-`vessel_id` job correctly rejected **400** (composite tenant FK
+  through the API), user provisioning, a provisioned dispatcher logging in, and dispatcher blocked
+  from `/users` (**403**). 18/18 e2e checks; `tsc --noEmit` clean; 11/11 unit tests. Demo data
+  deleted afterward — all `tug_` tables back to 0 rows.
+- Commits: `b1b897a` (foundation), `8b9dd4a` (Surface 2), `625d7c6` (e2e+SSL), `3677ef3`
+  (login hardening), `55db62a` (users + clients/crew/jobs + async errors). Local only (not pushed).
+- Hit anti-pattern #5 again (NODE_ENV=production dropped devDeps → `tsc` couldn't find `@types`);
+  fixed with `npm install --include=dev` + cleared `NODE_ENV`. New anti-pattern #11 captured.
+- End-of-session sync: Pinecone `--changed-only` re-embedded 2 files / 26 chunks. NotebookLM
+  refreshed (anti-patterns → reminder bucket, log → default) and **verified**: a reminder-bucket
+  query for anti-pattern #11 returned the SECURITY-DEFINER/PostgREST answer. `refreshed: 2  verified: yes`.
