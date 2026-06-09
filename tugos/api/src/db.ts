@@ -34,7 +34,14 @@ export async function tenantTransaction<T>(
 let pool: pg.Pool | undefined;
 function getPool(): pg.Pool {
   if (!pool) {
-    pool = new pg.Pool({ connectionString: config.databaseUrl });
+    // Supabase requires SSL. PGSSL_NO_VERIFY=1 disables cert verification
+    // (dev/spike convenience); leave it off in production and trust the CA.
+    const ssl = process.env.PGSSL_NO_VERIFY === '1' ? { rejectUnauthorized: false } : undefined;
+    pool = new pg.Pool({
+      connectionString: config.databaseUrl,
+      ssl,
+      connectionTimeoutMillis: 10_000,
+    });
   }
   return pool;
 }
