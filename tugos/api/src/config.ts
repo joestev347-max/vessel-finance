@@ -17,4 +17,11 @@ export const config = {
   get port(): number {
     return Number(process.env.PORT ?? 3001);
   },
+  // CORS allow-list from CORS_ORIGINS (comma-separated). Unset => reflect the
+  // request origin (dev convenience). Set it explicitly in production.
+  get corsOrigins(): string[] | boolean {
+    const v = process.env.CORS_ORIGINS;
+    if (!v || v.trim() === '') return true;
+    return v.split(',').map((s) => s.trim()).filter(Boolean);
+  },
 };
