@@ -90,7 +90,9 @@ try {
     headers: { 'content-type': 'application/json', ...auth },
     body: JSON.stringify({ vessel_id: vesselId, client_id: clientId, status: 'scheduled' }),
   });
+  const jobCreated = (await r.json()) as { job?: { id?: string } };
   check('POST /jobs (same-tenant refs) -> 201', r.status === 201, `status=${r.status}`);
+  const jobId = jobCreated.job?.id ?? '';
 
   // Job referencing a random (other-company) vessel id must be rejected (FK)
   r = await fetch(`${base}/jobs`, {
@@ -103,6 +105,23 @@ try {
   r = await fetch(`${base}/jobs`, { headers: auth });
   const jobsBody = (await r.json()) as { jobs?: unknown[] };
   check('GET /jobs returns exactly 1', jobsBody.jobs?.length === 1, `len=${jobsBody.jobs?.length}`);
+
+  // PATCH job status transition
+  r = await fetch(`${base}/jobs/${jobId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ status: 'en_route' }),
+  });
+  const patched = (await r.json()) as { job?: { status?: string } };
+  check('PATCH /jobs/:id -> 200 en_route', r.status === 200 && patched.job?.status === 'en_route', `status=${r.status} jobStatus=${patched.job?.status}`);
+
+  // PATCH an unknown/foreign job id -> 404 (RLS scopes the update to 0 rows)
+  r = await fetch(`${base}/jobs/00000000-0000-0000-0000-0000000000ff`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ status: 'complete' }),
+  });
+  check('PATCH unknown job id -> 404', r.status === 404, `status=${r.status}`);
 
   // User provisioning: fleet_admin creates a dispatcher
   r = await fetch(`${base}/users`, {

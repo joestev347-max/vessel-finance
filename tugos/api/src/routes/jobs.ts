@@ -55,3 +55,37 @@ jobsRouter.post('/', requireRole('fleet_admin', 'dispatcher'), asyncHandler(asyn
     throw err;
   }
 }));
+
+const statusSchema = z.object({
+  status: z.enum(['scheduled', 'en_route', 'on_scene', 'complete', 'cleared', 'cancelled']),
+});
+
+// PATCH /jobs/:id — advance a job's status (the dispatch board's core action).
+// RLS scopes the UPDATE to the caller's company, so a foreign/unknown id simply
+// matches 0 rows -> 404 (no cross-tenant write or info leak).
+jobsRouter.patch('/:id', requireRole('fleet_admin', 'dispatcher', 'captain'), asyncHandler(async (req, res) => {
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: 'invalid job id' });
+    return;
+  }
+  const parsed = statusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'invalid status', details: parsed.error.flatten() });
+    return;
+  }
+  const auth = req.auth!;
+  const job = await withTenant(auth.companyId, async (c) => {
+    const r = await c.query(
+      `update public.tug_jobs set status = $1 where id = $2
+       returning id, vessel_id, client_id, status, scheduled_at, created_at, updated_at`,
+      [parsed.data.status, id.data],
+    );
+    return r.rows[0] ?? null;
+  });
+  if (!job) {
+    res.status(404).json({ error: 'job not found' });
+    return;
+  }
+  res.json({ job });
+}));

@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -41,8 +42,12 @@ export function createApp() {
   return app;
 }
 
-// Only start listening when run directly (not when imported by tests).
-const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+// Only start listening when run directly (not when imported by tests). Use
+// pathToFileURL so the comparison is correct cross-platform (the hand-built
+// "file://" + path form does not match import.meta.url on Windows).
+const isMain = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
 if (isMain) {
   const app = createApp();
   app.listen(config.port, () => {
