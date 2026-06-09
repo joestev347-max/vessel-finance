@@ -70,3 +70,17 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Why it's tempting**: One-liners are fast, exit code 0 + no error text reads as success, and each fragment is valid cmd in isolation.
 - **Why it's wrong**: cmd parses the whole line up front: `if` consumes the rest of the line as its body, env vars expand before execution, and quote handling interacts with anti-pattern #7. "Exit 0" only means the *last parsed thing* didn't fail.
 - **Corrective rule**: Anything beyond a single command goes in a `.cmd`/`.ps1` script file (one command per line) run by path. Verify side effects directly (dir listing, file read) rather than trusting exit codes. For copies with long/spaced paths use PowerShell `Copy-Item -LiteralPath` with single quotes. For exit codes, capture them inside the script on their own line.
+
+## 9. Testing RLS as Supabase `postgres` proves nothing — it has `BYPASSRLS`
+
+- **Trigger pattern**: You apply RLS policies, then run SELECT/INSERT as the connection the Supabase MCP uses (`current_user = postgres`) to "verify isolation." Everything is visible / every write succeeds, so either you wrongly conclude RLS is broken, or (worse) you wrongly conclude it passed because no error was thrown.
+- **Why it's tempting**: `postgres` is the default MCP/SQL-editor identity and `execute_sql` just works; it *feels* like the app's identity.
+- **Why it's wrong**: On Supabase the `postgres` role is **not a superuser but has `rolbypassrls = true`** (verified 2026-06-09 on project `naxqxajzlmisqdnfvhzm`). `BYPASSRLS` skips every policy regardless of `FORCE ROW LEVEL SECURITY`. So RLS tests run as `postgres` are meaningless. The app's real identity is a non-bypass role (here `tug_app`).
+- **Corrective rule**: Exercise RLS as a role **without** `BYPASSRLS`. In a single MCP transaction: seed (postgres bypass is fine for seeding), then `set local role tug_app`, set the tenant GUC, run the assertions, and `raise` at the end so the whole thing rolls back (zero residue, no commit of test data). Confirm `rolbypassrls=false` for the role you assert under. Always finish with `get_advisors(security)` after DDL.
+
+## 10. PostgreSQL 16+ `SET ROLE` needs the membership `SET` option, not just membership
+
+- **Trigger pattern**: `pg_has_role('postgres','tug_app','MEMBER')` returns true, but `SET ROLE tug_app` fails with `42501: permission denied to set role "tug_app"`.
+- **Why it's tempting**: Being a MEMBER of a role historically implied you could `SET ROLE` to it.
+- **Why it's wrong**: PG16 split role membership into `INHERIT` / `SET` / `ADMIN` options. A grant made implicitly (e.g. creator gets `ADMIN` but `set_option=false`) does **not** permit `SET ROLE`. Check `pg_auth_members.set_option`.
+- **Corrective rule**: If you hold `ADMIN` on the role (creators usually do), grant yourself the SET option: `GRANT <role> TO <me> WITH SET TRUE;` then `SET ROLE` works. Inspect `pg_auth_members` (admin/inherit/set options) rather than trusting `pg_has_role(...,'MEMBER')` alone.

@@ -207,3 +207,47 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   `notebooklm-workflow` (ritual) and `notebooklm` (commands), documents the
   `delete-by-title` hang, and prescribes `source delete <id> --notebook <nb> -y`. Frontmatter
   description updated to match. Cowork surfaces the edited skill starting with the next session.
+
+## [2026-06-09] schema | TugOS Phase 0 foundation scaffolded (tug_ schema + per-tenant RLS)
+
+- Per Joseph: started the TugOS build at the optimal first move — the isolation-first DB
+  foundation (build-order row 1 / Phase 0 Workstream B first bullet). New isolated tree under
+  `tugos/`, deliberately separate from the SQLite/Prisma prototype (no migration of Vessel Finance).
+- `tugos/supabase/migrations/0001_core_schema.sql`: 6 core `tug_` tables (companies, users,
+  vessels, clients, crew, jobs) with `company_id` on every row, CHECK-constrained categorical
+  fields (no enums), `updated_at` triggers, query-pattern indexes. Remaining blueprint tables
+  (fuel_logs, maintenance, invoices, certs, agent_runs) deferred to Phase 1+.
+- `0002_rls_policies.sql`: per-tenant RLS via a session GUC `app.company_id` (matches blueprint's
+  Express + direct-SQL tenant-scoped connections, not PostgREST claims); least-privilege `tug_app`
+  role; **FORCE RLS**; DML revoked from PUBLIC/anon/authenticated.
+- Best-in-class hardening pass (top technical risk = cross-tenant leak): **composite tenant FKs**
+  `(company_id, child_id)→(company_id, id)` so FK validation (which bypasses RLS) can't reference
+  another tenant's rows; retire-don't-delete posture via NO ACTION.
+- `tugos/supabase/tests/0001_rls_isolation_test.sql`: 11 pgTAP assertions (read/insert/update/
+  delete/cross-tenant-FK/deny-by-default). `tugos/PHASE0-CHECKLIST.md` encodes O1–O6, the risk
+  register→prevention map, and the compliance-spine (Sub M tables wait for advisor+TPO validation)
+  + license-gate guards.
+- Verified this session: all SQL parses clean against the real PG grammar (pglast v7.14 /
+  libpg_query, 0 failures). **NOT yet executed against a live DB** — pending the dedicated Supabase
+  project (Joseph granting access via the Supabase MCP connector; provisioning + live RLS-test run
+  is the next step).
+
+## [2026-06-09] schema | TugOS foundation applied + RLS verified on live Supabase project
+
+- Joseph connected the **Supabase MCP** connector and created the dedicated project **`TUGOS`**
+  (ref `naxqxajzlmisqdnfvhzm`, region `us-east-2`, Postgres 17, org `joestev347-max's Org`). A
+  second stray project `joestev347- TUGOS` (`us-west-2`) exists — Joseph chose East US as canonical
+  and to delete West; the MCP has no delete capability, so the West project must be deleted from the
+  dashboard (still pending).
+- Applied migrations **0001** (core schema), **0002** (RLS + tug_app + FORCE RLS + revokes), and
+  **0003** (pin function `search_path`) via `apply_migration`. Verified directly: all 6 `tug_`
+  tables have `relrowsecurity=true` + `relforcerowsecurity=true`, 6 policies, composite tenant FKs.
+- **Live RLS isolation: 11/11 green.** Ran a self-contained, self-cleaning harness (seed 2 tenants
+  → `set role tug_app` → assert read/insert/update/delete/cross-tenant-FK/deny-by-default → `raise`
+  to roll back). Confirmed zero residue afterwards (all tables count 0). Re-ran after 0003 — still
+  11/11. Supabase **security advisor: 0 findings** (was 2 `function_search_path_mutable` WARNs,
+  fixed by 0003). Gate 0's "RLS isolation tests green" criterion is met at the DB layer.
+- App connection (later): API URL `https://naxqxajzlmisqdnfvhzm.supabase.co`; tenant traffic must
+  use a `tug_app`-privileged connection that sets `app.company_id` per transaction (NOT the
+  bypass-RLS `postgres`/service role).
+- New anti-patterns captured (#9, #10).
