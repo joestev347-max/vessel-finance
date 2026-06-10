@@ -40,7 +40,7 @@ function getPool(): pg.Pool {
     pool = new pg.Pool({
       connectionString: config.databaseUrl,
       ssl,
-      connectionTimeoutMillis: 4_000,
+      connectionTimeoutMillis: 15_000,
     });
     // Without this listener, a pool/connection error is emitted as an unhandled
     // 'error' event and crashes the process (an empty 500 on serverless).
