@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { PostgresRateLimitStore } from './rate-limit-store.js';
 import { errorHandler } from './http.js';
+import { queryNoTenant } from './db.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { vesselsRouter } from './routes/vessels.js';
@@ -34,6 +35,14 @@ export function createApp() {
   });
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.get('/debug/db', async (_req, res) => {
+    try {
+      const r = await queryNoTenant('select 1 as ok');
+      res.json({ db: 'ok', rows: r.rows });
+    } catch (e) {
+      res.status(500).json({ db: 'error', message: String((e as { message?: string })?.message), code: (e as { code?: string })?.code });
+    }
+  });
   app.use('/auth/login', loginLimiter);
   app.use('/auth', authRouter);
   app.use('/users', usersRouter);
