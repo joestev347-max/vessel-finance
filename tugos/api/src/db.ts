@@ -42,6 +42,11 @@ function getPool(): pg.Pool {
       ssl,
       connectionTimeoutMillis: 4_000,
     });
+    // Without this listener, a pool/connection error is emitted as an unhandled
+    // 'error' event and crashes the process (an empty 500 on serverless).
+    pool.on('error', (err) => {
+      console.error('pg pool error:', err.message);
+    });
   }
   return pool;
 }
