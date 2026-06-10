@@ -36,11 +36,14 @@ export function createApp() {
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
   app.get('/debug/db', async (_req, res) => {
+    let host = 'unset';
+    try { host = new URL(process.env.DATABASE_URL ?? '').host; } catch { /* unparseable */ }
+    const sslOn = process.env.PGSSL_NO_VERIFY === '1';
     try {
       const r = await queryNoTenant('select 1 as ok');
-      res.json({ db: 'ok', rows: r.rows });
+      res.json({ db: 'ok', host, sslNoVerify: sslOn, rows: r.rows });
     } catch (e) {
-      res.status(500).json({ db: 'error', message: String((e as { message?: string })?.message), code: (e as { code?: string })?.code });
+      res.status(500).json({ db: 'error', host, sslNoVerify: sslOn, message: String((e as { message?: string })?.message), code: (e as { code?: string })?.code });
     }
   });
   app.use('/auth/login', loginLimiter);
