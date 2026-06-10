@@ -14,5 +14,9 @@ coverage
 
 # Limitless Stack — local helper scripts, scratch & state (machine-specific, not for git)
 _*
+# ...but never ignore source test directories that legitimately start with "_"
+# (the broad "_*" above otherwise swallows __tests__, dropping them from the repo).
+!**/__tests__/
+!**/__tests__/**
 _skill-build/
 tools/.pinecone-sync-state.json
