@@ -1,4 +1,4 @@
-import pg from 'pg';
+import postgres from 'postgres';
 import { config } from './config.js';
 
 // A minimal query interface so the tenant-transaction logic can be unit-tested
@@ -29,38 +29,40 @@ export async function tenantTransaction<T>(
   }
 }
 
-// Lazily-created pool so importing this module (e.g. in tests) doesn't require
-// DATABASE_URL until an actual connection is needed.
-let pool: pg.Pool | undefined;
-function getPool(): pg.Pool {
-  if (!pool) {
-    // Supabase requires SSL. PGSSL_NO_VERIFY=1 disables cert verification
-    // (dev/spike convenience); leave it off in production and trust the CA.
-    const ssl = process.env.PGSSL_NO_VERIFY === '1' ? { rejectUnauthorized: false } : undefined;
-    pool = new pg.Pool({
-      connectionString: config.databaseUrl,
+// porsager/postgres: a pure-JS driver that bundles cleanly on serverless.
+// prepare:false is REQUIRED for Supabase's transaction pooler (Supavisor) — it
+// doesn't support named prepared statements. Lazily created so importing this
+// module (e.g. in unit tests) doesn't need DATABASE_URL.
+let sql: ReturnType<typeof postgres> | undefined;
+function getSql() {
+  if (!sql) {
+    const ssl = process.env.PGSSL_NO_VERIFY === '1' ? { rejectUnauthorized: false } : ('require' as const);
+    sql = postgres(config.databaseUrl, {
       ssl,
-      connectionTimeoutMillis: 15_000,
-    });
-    // Without this listener, a pool/connection error is emitted as an unhandled
-    // 'error' event and crashes the process (an empty 500 on serverless).
-    pool.on('error', (err) => {
-      console.error('pg pool error:', err.message);
+      prepare: false,
+      connect_timeout: 15,
+      idle_timeout: 20,
+      max: 5,
     });
   }
-  return pool;
+  return sql;
 }
 
-// Acquire a pooled connection and run fn within a tenant-scoped transaction.
+function rowsShim(run: (text: string, params: unknown[]) => Promise<unknown[]>): Queryable {
+  return { query: async (text, params = []) => ({ rows: (await run(text, params)) as any[] }) };
+}
+
+// Acquire a dedicated connection and run fn within a tenant-scoped transaction.
 export async function withTenant<T>(
   companyId: string,
   fn: (client: Queryable) => Promise<T>,
 ): Promise<T> {
-  const client = await getPool().connect();
+  const reserved = await getSql().reserve();
   try {
+    const client = rowsShim((text, params) => reserved.unsafe(text, params as never[]));
     return await tenantTransaction(client, companyId, fn);
   } finally {
-    client.release();
+    reserved.release();
   }
 }
 
@@ -71,17 +73,13 @@ export async function queryNoTenant(
   text: string,
   params: unknown[] = [],
 ): Promise<{ rows: any[] }> {
-  const client = await getPool().connect();
-  try {
-    return await client.query(text, params);
-  } finally {
-    client.release();
-  }
+  const rows = await getSql().unsafe(text, params as never[]);
+  return { rows: rows as any[] };
 }
 
 export async function closePool(): Promise<void> {
-  if (pool) {
-    await pool.end();
-    pool = undefined;
+  if (sql) {
+    await sql.end();
+    sql = undefined;
   }
 }
