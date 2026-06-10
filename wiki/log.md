@@ -299,3 +299,21 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
 - End-of-session sync: Pinecone `--changed-only` â†’ 2 files / 29 chunks. NotebookLM refreshed
   (anti-patterns â†’ reminder, log â†’ default) and **verified**: reminder-bucket query returns
   anti-pattern #12 (the `_*`/`__tests__` lesson). `refreshed: 2  verified: yes`.
+
+## [2026-06-10] deploy | TugOS live on Vercel (single-origin) — pg -> porsager/postgres
+
+- **Goal**: run the dispatch app on Vercel so edits show up live. Got the single-origin Express+SPA
+  deploy READY, but every DB-backed route 500'd with an empty body (DB-free routes were fine).
+- **Misdiagnosis loop** (captured as anti-pattern #14): assumed a connection hang and burned commits
+  on pooler host (aws-0 vs aws-1 — aws-1 is correct), SSL flags, `connectionTimeoutMillis`, a
+  `pool.on('error')` handler, IPv4-first DNS, and `maxDuration 30`. An env-echo route proved the env
+  was correct all along (host/sslNoVerify/JWT). Adding a stopwatch showed the 500 was **~0s** = an
+  instant crash, not a timeout.
+- **Root cause + fix** (anti-pattern #13): `pg` (node-postgres) crashes in the Vercel serverless
+  bundle on first pool use. Switched the DB layer to **porsager/postgres** with `prepare:false`
+  (Supabase transaction pooler), same `Queryable {rows}` shim, tenant tx over `sql.reserve()`.
+  Verified: API tsc + 25 unit tests; live API e2e **23/23** through aws-1 pooler.
+- **Live verification on Vercel**: `/debug/db` ok (1s), then login 200 (fleet_admin) + `/auth/me` 200
+  + `/vessels` 200 + `/jobs` 200 + logout 200 via a real cookie jar. Removed the temporary `/debug`
+  routes after confirming. Site: https://vessel-finance.vercel.app (demo: captain@demo.test).
+- Commits e31c458..229256d pushed; auto-deploy on push to master is working.
