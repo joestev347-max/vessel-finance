@@ -86,9 +86,11 @@ try {
   const selects = page.locator('select');
   await selects.nth(0).selectOption({ label: 'E2E Tug' });
   await selects.nth(1).selectOption({ label: 'E2E Client' });
+  await page.locator('form textarea').first().fill('Assist at berth 4');
   await page.getByRole('button', { name: /new job/i }).click();
   await page.waitForSelector('article:has-text("E2E Tug")', { timeout: 15000 });
   check('job created on board', true);
+  check('job card shows notes', (await page.locator('article:has-text("Assist at berth 4")').count()) > 0);
 
   await page.getByRole('button', { name: /En route/i }).first().click();
   await page.waitForTimeout(1500);

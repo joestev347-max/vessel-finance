@@ -12,6 +12,7 @@ export interface Job {
   client_id: string | null;
   status: Status;
   scheduled_at: string | null;
+  notes: string | null;
   created_at: string;
 }
 export interface CrewMember { id: string; full_name: string; rank: string | null; created_at: string; }
@@ -64,10 +65,10 @@ export const api = {
   createClient: (c: { name: string; billing_email?: string }) =>
     req<{ client: Client }>('/clients', { method: 'POST', body: JSON.stringify(c) }),
   listJobs: () => req<{ jobs: Job[] }>('/jobs'),
-  createJob: (j: { vessel_id?: string; client_id?: string }) =>
+  createJob: (j: { vessel_id?: string; client_id?: string; scheduled_at?: string; notes?: string }) =>
     req<{ job: Job }>('/jobs', { method: 'POST', body: JSON.stringify(j) }),
-  setJobStatus: (id: string, status: Status) =>
-    req<{ job: Job }>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateJob: (id: string, patch: { status?: Status; scheduled_at?: string | null; notes?: string | null }) =>
+    req<{ job: Job }>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   listCrew: () => req<{ crew: CrewMember[] }>('/crew'),
   createCrew: (c: { full_name: string; rank?: string }) =>
     req<{ crew: CrewMember }>('/crew', { method: 'POST', body: JSON.stringify(c) }),

@@ -88,10 +88,17 @@ try {
   r = await fetch(`${base}/jobs`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...auth },
-    body: JSON.stringify({ vessel_id: vesselId, client_id: clientId, status: 'scheduled' }),
+    body: JSON.stringify({
+      vessel_id: vesselId,
+      client_id: clientId,
+      status: 'scheduled',
+      scheduled_at: '2026-06-11T14:30:00.000Z',
+      notes: 'Assist outbound tanker at berth 4',
+    }),
   });
-  const jobCreated = (await r.json()) as { job?: { id?: string } };
+  const jobCreated = (await r.json()) as { job?: { id?: string; notes?: string; scheduled_at?: string } };
   check('POST /jobs (same-tenant refs) -> 201', r.status === 201, `status=${r.status}`);
+  check('created job persists notes + scheduled_at', jobCreated.job?.notes === 'Assist outbound tanker at berth 4' && !!jobCreated.job?.scheduled_at, `notes=${jobCreated.job?.notes}`);
   const jobId = jobCreated.job?.id ?? '';
 
   // Job referencing a random (other-company) vessel id must be rejected (FK)
@@ -114,6 +121,15 @@ try {
   });
   const patched = (await r.json()) as { job?: { status?: string } };
   check('PATCH /jobs/:id -> 200 en_route', r.status === 200 && patched.job?.status === 'en_route', `status=${r.status} jobStatus=${patched.job?.status}`);
+
+  // PATCH notes (partial update, not just status)
+  r = await fetch(`${base}/jobs/${jobId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', ...auth },
+    body: JSON.stringify({ notes: 'Updated: pilot aboard 1500' }),
+  });
+  const patchedNotes = (await r.json()) as { job?: { notes?: string; status?: string } };
+  check('PATCH /jobs/:id notes -> 200 (status unchanged)', r.status === 200 && patchedNotes.job?.notes === 'Updated: pilot aboard 1500' && patchedNotes.job?.status === 'en_route', `notes=${patchedNotes.job?.notes} status=${patchedNotes.job?.status}`);
 
   // PATCH an unknown/foreign job id -> 404 (RLS scopes the update to 0 rows)
   r = await fetch(`${base}/jobs/00000000-0000-0000-0000-0000000000ff`, {
