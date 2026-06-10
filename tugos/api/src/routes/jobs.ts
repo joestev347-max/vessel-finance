@@ -67,6 +67,21 @@ const patchSchema = z
     message: 'provide at least one of status, scheduled_at, notes',
   });
 
+// Pure helper (exported for unit tests): turn a validated partial patch into a
+// parametrized SET clause over whitelisted columns. Values are positional $1..$n.
+export function buildJobPatch(d: { status?: string; scheduled_at?: string | null; notes?: string | null }): {
+  setSql: string;
+  values: unknown[];
+} {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  let i = 1;
+  if (d.status !== undefined) { sets.push(`status = $${i++}`); values.push(d.status); }
+  if (d.scheduled_at !== undefined) { sets.push(`scheduled_at = $${i++}`); values.push(d.scheduled_at); }
+  if (d.notes !== undefined) { sets.push(`notes = $${i++}`); values.push(d.notes); }
+  return { setSql: sets.join(', '), values };
+}
+
 jobsRouter.patch('/:id', requireRole('fleet_admin', 'dispatcher', 'captain'), asyncHandler(async (req, res) => {
   const id = z.string().uuid().safeParse(req.params.id);
   if (!id.success) {
@@ -78,21 +93,15 @@ jobsRouter.patch('/:id', requireRole('fleet_admin', 'dispatcher', 'captain'), as
     res.status(400).json({ error: 'invalid job update', details: parsed.error.flatten() });
     return;
   }
-  // Build a parametrized SET clause over whitelisted columns only.
-  const sets: string[] = [];
-  const vals: unknown[] = [];
-  let i = 1;
-  const d = parsed.data;
-  if (d.status !== undefined) { sets.push(`status = $${i++}`); vals.push(d.status); }
-  if (d.scheduled_at !== undefined) { sets.push(`scheduled_at = $${i++}`); vals.push(d.scheduled_at); }
-  if (d.notes !== undefined) { sets.push(`notes = $${i++}`); vals.push(d.notes); }
-  vals.push(id.data);
+  const { setSql, values } = buildJobPatch(parsed.data);
+  values.push(id.data);
+  const idParam = values.length;
 
   const auth = req.auth!;
   const job = await withTenant(auth.companyId, async (c) => {
     const r = await c.query(
-      `update public.tug_jobs set ${sets.join(', ')} where id = $${i} returning ${JOB_COLUMNS}`,
-      vals,
+      `update public.tug_jobs set ${setSql} where id = $${idParam} returning ${JOB_COLUMNS}`,
+      values,
     );
     return r.rows[0] ?? null;
   });

@@ -279,3 +279,23 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
 - End-of-session sync: Pinecone `--changed-only` re-embedded 2 files / 26 chunks. NotebookLM
   refreshed (anti-patterns → reminder bucket, log → default) and **verified**: a reminder-bucket
   query for anti-pattern #11 returned the SECURITY-DEFINER/PostgREST answer. `refreshed: 2  verified: yes`.
+
+## [2026-06-09] schema | Surface 1 dispatch UI, Fleet UI, CI, scheduled-time+notes, test coverage
+
+- Built **Surface 1** (`tugos/web`, React 19 + Vite + Tailwind): login (JWT), dispatch board with
+  status columns + status-transition `PATCH`, Fleet management (vessels/clients/crew/users) via a
+  reusable ResourceManager, and a scheduled-time picker + notes on jobs (migration 0006 +
+  generalized `PATCH /jobs/:id`). Verified by a committable, env-driven Playwright e2e
+  (`web/e2e/uiverify.mjs`) against the live project — login → fleet setup → dispatch, screenshots.
+- **CI**: added `.github/workflows/tugos-ci.yml` (new file; `self-heal.yml` untouched) running API
+  typecheck+tests and web typecheck+tests+build on push/PR touching `tugos/**`. First run **caught a
+  real bug** (see anti-pattern #12): the root `.gitignore` `_*` was swallowing `__tests__`, so the
+  API test suite had never been committed. Fixed with `!**/__tests__/`; CI green after.
+- **Test coverage** added and wired into CI: API node:test units for the job-patch builder,
+  auth/role middleware, and async error handling (25 assertions total); web vitest+jsdom tests for
+  the API client and the Login component (4 assertions). All green: API tsc+tests, web tsc+vitest+build.
+- Pushed all commits to origin (`github.com/joestev347-max/vessel-finance`). New anti-pattern #12
+  captured (broad `_*` gitignore swallowing `__tests__`).
+- End-of-session sync: Pinecone `--changed-only` → 2 files / 29 chunks. NotebookLM refreshed
+  (anti-patterns → reminder, log → default) and **verified**: reminder-bucket query returns
+  anti-pattern #12 (the `_*`/`__tests__` lesson). `refreshed: 2  verified: yes`.
