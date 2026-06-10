@@ -1,29 +1,42 @@
-import { useState } from 'react';
-import { clearToken, getToken } from './api.ts';
+import { useEffect, useState } from 'react';
+import { api } from './api.ts';
 import { Login } from './components/Login.tsx';
 import { Dispatch } from './components/Dispatch.tsx';
 import { Fleet } from './components/Fleet.tsx';
 
 type View = 'dispatch' | 'fleet';
+type Status = 'checking' | 'authed' | 'guest';
 
 export function App() {
-  const [token, setTokenState] = useState<string | null>(() => getToken());
+  const [status, setStatus] = useState<Status>('checking');
   const [role, setRole] = useState<string>('');
   const [view, setView] = useState<View>('dispatch');
   const [error, setError] = useState('');
 
+  // On load, ask the server whether the session cookie is valid.
+  useEffect(() => {
+    let active = true;
+    api.me()
+      .then((r) => { if (active) { setRole(r.role); setStatus('authed'); } })
+      .catch(() => { if (active) setStatus('guest'); });
+    return () => { active = false; };
+  }, []);
+
   function onLoggedIn(r: string) {
     setRole(r);
-    setTokenState(getToken());
+    setStatus('authed');
   }
   function onLogout() {
-    clearToken();
-    setTokenState(null);
+    void api.logout().catch(() => {});
+    setStatus('guest');
     setRole('');
     setView('dispatch');
   }
 
-  if (!token) {
+  if (status === 'checking') {
+    return <div className="flex min-h-full items-center justify-center bg-slate-900 text-slate-400">Loading…</div>;
+  }
+  if (status === 'guest') {
     return (
       <div className="min-h-full bg-slate-900 text-slate-100">
         <Login onLoggedIn={onLoggedIn} />

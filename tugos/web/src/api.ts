@@ -1,6 +1,7 @@
-// Thin TugOS API client. Token persists in localStorage; every call attaches it.
-const BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:3001';
-const TOKEN_KEY = 'tugos_token';
+// Thin TugOS API client. Auth is a server-set httpOnly cookie (not readable by
+// JS), so every request just sends credentials; there is no token in the page.
+// BASE is same-origin by default ('' -> relative URLs); dev sets VITE_API_BASE.
+const BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 
 export type Status = 'scheduled' | 'en_route' | 'on_scene' | 'complete' | 'cleared' | 'cancelled';
 
@@ -32,21 +33,13 @@ export class ApiError extends Error {
   }
 }
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-export function setToken(t: string): void {
-  localStorage.setItem(TOKEN_KEY, t);
-}
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
-
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
-  const t = getToken();
-  if (t) headers['authorization'] = `Bearer ${t}`;
-  const res = await fetch(BASE + path, { ...opts, headers: { ...headers, ...(opts.headers as Record<string, string>) } });
+  const res = await fetch(BASE + path, {
+    ...opts,
+    credentials: 'include', // send/receive the httpOnly session cookie
+    headers: { ...headers, ...(opts.headers as Record<string, string>) },
+  });
   const body: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = (body as { error?: string })?.error ?? res.statusText;
@@ -57,7 +50,9 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
 
 export const api = {
   login: (email: string, password: string) =>
-    req<{ token: string; role: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    req<{ role: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: () => req<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  me: () => req<{ role: string }>('/auth/me'),
   listVessels: () => req<{ vessels: Vessel[] }>('/vessels'),
   createVessel: (v: { name: string; official_number?: string }) =>
     req<{ vessel: Vessel }>('/vessels', { method: 'POST', body: JSON.stringify(v) }),

@@ -2,8 +2,10 @@ import { pathToFileURL } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
+import { PostgresRateLimitStore } from './rate-limit-store.js';
 import { errorHandler } from './http.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
@@ -16,16 +18,18 @@ export function createApp() {
   const app = express();
   app.set('trust proxy', 1); // behind Vercel/proxy: needed for correct client IP in rate limiting
   app.use(helmet());
-  app.use(cors({ origin: config.corsOrigins }));
+  app.use(cors({ origin: config.corsOrigins, credentials: true })); // credentials => cookies
+  app.use(cookieParser());
   app.use(express.json({ limit: '100kb' })); // cap request bodies
 
   // Brute-force mitigation on the credential endpoint.
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: Number(process.env.LOGIN_RATE_MAX ?? 10), // tunable for tests/e2e
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'too many login attempts, please try again later' },
+    store: new PostgresRateLimitStore(),
   });
 
   app.get('/health', (_req, res) => res.json({ ok: true }));

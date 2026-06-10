@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { verifyAccessToken } from './auth.js';
+import { SESSION_COOKIE } from './config.js';
 import type { AuthContext, Role } from './types.js';
 
 // Augment Express Request with the verified identity.
@@ -13,13 +14,18 @@ declare global {
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
+  // Prefer the httpOnly session cookie; fall back to a Bearer header (API clients/tests).
+  const cookies = (req as Request & { cookies?: Record<string, string> }).cookies;
+  const cookieToken = cookies?.[SESSION_COOKIE];
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'missing bearer token' });
+  const bearer = header?.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : undefined;
+  const token = cookieToken ?? bearer;
+  if (!token) {
+    res.status(401).json({ error: 'not authenticated' });
     return;
   }
   try {
-    req.auth = verifyAccessToken(header.slice('Bearer '.length).trim());
+    req.auth = verifyAccessToken(token);
     next();
   } catch {
     res.status(401).json({ error: 'invalid or expired token' });

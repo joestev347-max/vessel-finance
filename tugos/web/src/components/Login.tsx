@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { api, ApiError, setToken } from '../api.ts';
+import { api, ApiError } from '../api.ts';
 
 export function Login({ onLoggedIn }: { onLoggedIn: (role: string) => void }) {
   const [email, setEmail] = useState('');
@@ -12,8 +12,7 @@ export function Login({ onLoggedIn }: { onLoggedIn: (role: string) => void }) {
     setError('');
     setBusy(true);
     try {
-      const { token, role } = await api.login(email, password);
-      setToken(token);
+      const { role } = await api.login(email, password);
       onLoggedIn(role);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'login failed');

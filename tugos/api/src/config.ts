@@ -24,4 +24,12 @@ export const config = {
     if (!v || v.trim() === '') return true;
     return v.split(',').map((s) => s.trim()).filter(Boolean);
   },
+  get isProd(): boolean {
+    return process.env.NODE_ENV === 'production';
+  },
 };
+
+// Name of the httpOnly session cookie that carries the access token.
+export const SESSION_COOKIE = 'tug_session';
+// 15 minutes, matching the access-token TTL.
+export const SESSION_MAX_AGE_MS = 15 * 60 * 1000;

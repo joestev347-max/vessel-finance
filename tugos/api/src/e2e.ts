@@ -15,6 +15,14 @@ function check(name: string, cond: boolean, extra = ''): void {
   }
 }
 
+// Node fetch has no cookie jar: pull the session cookie out of the login
+// response and replay it as a Cookie header on subsequent requests.
+function cookieFrom(res: Response): Record<string, string> {
+  const sc = res.headers.get('set-cookie') ?? '';
+  const first = sc.split(';')[0] ?? '';
+  return first ? { cookie: first } : {};
+}
+
 const app = createApp();
 const server = app.listen(0);
 await new Promise<void>((resolve) => server.on('listening', () => resolve()));
@@ -37,15 +45,16 @@ try {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email: 'captain@demo.test', password: 'DemoPass123!' }),
   });
-  const login = (await r.json()) as { token?: string; role?: string };
-  check('login -> 200', r.status === 200, `status=${r.status} body=${JSON.stringify(login)}`);
+  const login = (await r.json()) as { role?: string };
+  const auth = cookieFrom(r);
+  check('login -> 200 and sets a session cookie', r.status === 200 && !!auth.cookie, `status=${r.status} cookie=${!!auth.cookie}`);
   check('login returns fleet_admin role', login.role === 'fleet_admin', `role=${login.role}`);
-  const token = login.token ?? '';
-  check('login returns a token', token.length > 0);
-  const auth = { authorization: `Bearer ${token}` };
+
+  r = await fetch(`${base}/auth/me`, { headers: auth });
+  check('GET /auth/me with cookie -> 200', r.status === 200, `status=${r.status}`);
 
   r = await fetch(`${base}/vessels`);
-  check('GET /vessels without token -> 401', r.status === 401, `status=${r.status}`);
+  check('GET /vessels without session -> 401', r.status === 401, `status=${r.status}`);
 
   r = await fetch(`${base}/vessels`, { headers: auth });
   let body = (await r.json()) as { vessels?: unknown[] };
@@ -153,9 +162,9 @@ try {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email: 'dispatch@demo.test', password: 'DispatchPass123!' }),
   });
-  const dispatchLogin = (await r.json()) as { token?: string; role?: string };
+  const dispatchLogin = (await r.json()) as { role?: string };
+  const dispatchAuth = cookieFrom(r);
   check('provisioned dispatcher can log in', r.status === 200 && dispatchLogin.role === 'dispatcher', `status=${r.status} role=${dispatchLogin.role}`);
-  const dispatchAuth = { authorization: `Bearer ${dispatchLogin.token ?? ''}` };
 
   // Role gate: dispatcher cannot provision users
   r = await fetch(`${base}/users`, {
