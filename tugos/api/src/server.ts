@@ -35,6 +35,18 @@ export function createApp() {
   });
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.get('/debug/env', (_req, res) => {
+    let host = 'unset';
+    let proto = '';
+    try { const u = new URL(process.env.DATABASE_URL ?? ''); host = u.host; proto = u.protocol; } catch { /* unparseable */ }
+    res.json({
+      host,
+      proto,
+      sslNoVerify: process.env.PGSSL_NO_VERIFY === '1',
+      hasJwt: !!process.env.JWT_SECRET,
+      hasDbUrl: !!process.env.DATABASE_URL,
+    });
+  });
   app.get('/debug/db', async (_req, res) => {
     let host = 'unset';
     try { host = new URL(process.env.DATABASE_URL ?? '').host; } catch { /* unparseable */ }
