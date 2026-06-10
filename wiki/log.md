@@ -317,3 +317,5 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
   + `/vessels` 200 + `/jobs` 200 + logout 200 via a real cookie jar. Removed the temporary `/debug`
   routes after confirming. Site: https://vessel-finance.vercel.app (demo: captain@demo.test).
 - Commits e31c458..229256d pushed; auto-deploy on push to master is working.
+
+- **End-of-session sync (2026-06-10)**: Pinecone `--changed-only` -> 2 files / 32 chunks (21 unchanged). NotebookLM refreshed both buckets and **verified**: reminder query returns anti-pattern #13 (pg->porsager/postgres); default query returns the 2026-06-10 Vercel/driver session. `refreshed: 2  verified: yes`.
