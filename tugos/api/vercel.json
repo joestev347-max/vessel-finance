@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm --prefix ../web ci && npm --prefix ../web run build && rm -rf public && cp -r ../web/dist public",
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.ts": { "includeFiles": "public/**" }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ]
+}

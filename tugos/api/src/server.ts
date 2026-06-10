@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
@@ -40,6 +41,15 @@ export function createApp() {
   app.use('/clients', clientsRouter);
   app.use('/crew', crewRouter);
   app.use('/jobs', jobsRouter);
+
+  // Single-origin deploy: when WEB_DIST is set, this same app also serves the
+  // built React SPA, so cookies stay first-party and no CORS is needed. The API
+  // routes above are matched first; everything else falls back to index.html.
+  const webDist = process.env.WEB_DIST;
+  if (webDist) {
+    app.use(express.static(webDist));
+    app.get('*', (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
+  }
 
   app.use(errorHandler); // terminal error handler — must be last
 
