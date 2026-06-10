@@ -33,14 +33,14 @@ defaults to 10.
 In Supabase → **Connect** → **Transaction pooler**, copy the URI. It looks like:
 
 ```
-postgresql://postgres.naxqxajzlmisqdnfvhzm:<password>@aws-0-us-east-2.pooler.supabase.com:6543/postgres
+postgresql://postgres.naxqxajzlmisqdnfvhzm:<password>@aws-1-us-east-2.pooler.supabase.com:6543/postgres
 ```
 
 Swap the role to **tug_api** (username becomes `tug_api.naxqxajzlmisqdnfvhzm`) and
 use tug_api's password, and append `?sslmode=require`:
 
 ```
-postgresql://tug_api.naxqxajzlmisqdnfvhzm:<tug_api password>@aws-0-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require
+postgresql://tug_api.naxqxajzlmisqdnfvhzm:<tug_api password>@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
 (Confirm the exact pooler host/port shown in your dashboard — region/format can differ.)

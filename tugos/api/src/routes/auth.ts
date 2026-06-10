@@ -38,7 +38,7 @@ authRouter.post('/login', async (req, res) => {
       return;
     }
     console.error('login error', err);
-    res.status(500).json({ error: 'internal error', detail: String((err as Error)?.message ?? err) });
+    res.status(500).json({ error: 'internal error' });
   }
 });
 
