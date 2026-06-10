@@ -8,7 +8,6 @@ import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { PostgresRateLimitStore } from './rate-limit-store.js';
 import { errorHandler } from './http.js';
-import { queryNoTenant } from './db.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { vesselsRouter } from './routes/vessels.js';
@@ -35,29 +34,6 @@ export function createApp() {
   });
 
   app.get('/health', (_req, res) => res.json({ ok: true }));
-  app.get('/debug/env', (_req, res) => {
-    let host = 'unset';
-    let proto = '';
-    try { const u = new URL(process.env.DATABASE_URL ?? ''); host = u.host; proto = u.protocol; } catch { /* unparseable */ }
-    res.json({
-      host,
-      proto,
-      sslNoVerify: process.env.PGSSL_NO_VERIFY === '1',
-      hasJwt: !!process.env.JWT_SECRET,
-      hasDbUrl: !!process.env.DATABASE_URL,
-    });
-  });
-  app.get('/debug/db', async (_req, res) => {
-    let host = 'unset';
-    try { host = new URL(process.env.DATABASE_URL ?? '').host; } catch { /* unparseable */ }
-    const sslOn = process.env.PGSSL_NO_VERIFY === '1';
-    try {
-      const r = await queryNoTenant('select 1 as ok');
-      res.json({ db: 'ok', host, sslNoVerify: sslOn, rows: r.rows });
-    } catch (e) {
-      res.status(500).json({ db: 'error', host, sslNoVerify: sslOn, message: String((e as { message?: string })?.message), code: (e as { code?: string })?.code });
-    }
-  });
   app.use('/auth/login', loginLimiter);
   app.use('/auth', authRouter);
   app.use('/users', usersRouter);
