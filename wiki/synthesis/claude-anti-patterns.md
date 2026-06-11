@@ -111,3 +111,10 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Trigger pattern**: A serverless route 500s with no body. You theorize "the DB connect is hanging" and start tuning timeouts.
 - **Why it's wrong**: A platform-level empty 500 can be an instant uncaught crash OR a function timeout — opposite causes. Guessing wrong sends you down a multi-commit rabbit hole (raising `connectionTimeoutMillis`/`maxDuration` does nothing for a 0-second crash).
 - **Corrective rule**: Before theorizing, **measure**: wrap the request in a stopwatch (`ELAPSED ...s`). ~0s => crash (driver/bundle/uncaught throw); ~timeout-limit => genuine hang (network/DNS/connect). Also add a DB-free env-echo route early to confirm config without the DB in the path, and remember PowerShell's `Invoke-WebRequest` ignores a manually-set `Cookie` header — use `-SessionVariable`/`-WebSession` (a real cookie jar) when testing cookie auth, or you'll chase a phantom 401.
+
+## 15. `NODE_ENV=production` in the build shell makes `npm install` silently skip devDependencies
+
+- **Trigger pattern**: A fresh `npm install` exits 0 but the Next.js/Vite production build fails with `Cannot find module '@tailwindcss/postcss'` (or typescript/eslint). `node_modules` has ~50 packages, not hundreds; runtime deps (next/react) are present but build-time devDeps are missing.
+- **Why it's tempting**: The install succeeds and runtime deps are there, so it looks complete.
+- **Why it's wrong**: This machine's spawned shell has `NODE_ENV=production`; npm honors it as `--omit=dev`, so devDependencies (Tailwind/PostCSS, TypeScript, ESLint) are never installed and the production build (which needs them) breaks.
+- **Corrective rule**: For local builds here, install with `npm install --include=dev` (or unset NODE_ENV for the install) and verify `Test-Path node_modules/@tailwindcss/postcss` before building. (Hit 2026-06-10 building the separate Boat Budget Next.js app.)
