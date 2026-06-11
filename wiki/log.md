@@ -333,3 +333,35 @@ Chronological, append-only. Every entry starts with `## [YYYY-MM-DD] <op> | <lab
 - **Fix (sync)**: added `load_dotenv_file()` to `tools/pinecone-sync.py` — loads vault `.env` into `os.environ` before reading the key, without overriding an existing var (explicit shell export still wins). Copied `PINECONE_API_KEY` from the User env var into the gitignored `.env`. Verified: sync runs clean with `PINECONE_API_KEY` removed from the shell (23 wiki files unchanged, exit 0).
 - **Fix (preflight)**: tightened check #4 in `tools/preflight.ps1` to resolve the key the way the sync does — present only if in **process env OR `.env`**; "key only in User env, not in `.env`" is now an explicit **yellow** instead of a green. Verified: preflight with the key stripped from the shell still reports Pinecone green from `.env` (exit 1 only on the expected uncommitted-files warning).
 - **Pinecone**: re-synced earlier this session (`--changed-only` → 1 wiki file / 21 chunks). Files changed this entry: `tools/pinecone-sync.py`, `tools/preflight.ps1`, `wiki/synthesis/claude-anti-patterns.md`, `wiki/log.md`. NOTE: end-of-session NotebookLM refresh + Pinecone re-sync for the wiki edits still pending.
+
+## [2026-06-11] setup | Boat Budget app — budget model rework, per-category bars, revenue budgets, invoices, customers
+
+Session record for the separate **Boat Budget** app (Supabase ref `aiugwzgxpwgmglpojgoz`, repo
+github.com/joestev347-max/boat-budget, live boat-budget.vercel.app). Isolated from TUGOS/vessel-finance;
+logged here per convention. Five commits, all built green + deployed READY; finance test suite grew
+30 → 53 assertions (all pass); Supabase security advisors clean after each migration (only the 3
+pre-existing benign SECURITY DEFINER warnings + leaked-password-protection remain).
+
+- **Diagnosed a "budgets tab does nothing" report**: category budgets were write-only — only the
+  Budgets tab read them; every other bar used vessel-level allocation. Not a save bug; a wiring gap.
+- **Reworked the budget model** (commits `a57220b`→`fdfa0d5`): overhead is now a single **fleet-level**
+  combined budget; **variable** is per-vessel. Vessel budget bars use the vessel's variable budgets
+  (fallback to allocation); overhead shows as a fleet figure on the dashboard + Budgets fleet view.
+  Migrated the 5 test overhead rows from Emma Rose → fleet (`vessel_id = null`).
+- **Per-category budget-vs-actual bars** (`edcfd13`): variable + overhead breakdowns on vessel pages
+  and dashboard. **Revenue budgets by code**: new `revenue_budgets` table (mirrors category_budgets:
+  nullable vessel_id, cascade FKs, unique idx, RLS select-all + can_write write). Revenue bars use
+  inverse color (over-target = green).
+- **Invoice attachments on revenue** (`c173ca2`): the revenue entry form had no file field (expense
+  did) — added an "Invoice (optional)" upload mirroring the expense receipt flow; recent-txn widget
+  labels revenue rows "Invoice".
+- **Customers** (`5eec4b7`): new `customers` table (name, code, archived; RLS select-all + write
+  `can_enter_txn`) + `transactions.customer_id` (FK on delete set null). Revenue form has a quick-add
+  customer field (datalist of existing names, or type new — find-or-create by case-insensitive name).
+  Dashboard "Revenue by customer" table + Reports CSV; uncoded revenue rolls up as "Unassigned".
+- New anti-pattern **#17** (inline `$`-vars mangled in Desktop Commander PowerShell `-Command`).
+- Next session: HANDOFF.md in the Boat Budget repo is refreshed. Open items there: optional Customers
+  management page (rename/archive), decide whether vessel allocation should mean variable-only, May/June
+  monthly reports still pending, security hardening still deferred.
+
+- **End-of-session sync (2026-06-11)**: Pinecone `--changed-only` → 2 wiki files / 41 chunks (21 unchanged). NotebookLM: re-added `claude-anti-patterns.md` (reminder bucket) + `log.md` (default bucket) and **VERIFIED** — the reminder bucket now answers anti-pattern #17 (inline `$`-var mangling) correctly. `refreshed: 2  verified: yes`. **Cleanup debt**: `source delete-by-title` aborts when a title is ambiguous (multiple sources share the name), so old copies were NOT removed while `source add` still ran → duplicate sources accumulated (reminder has 3× `claude-anti-patterns.md`, default has 3× `log.md`). Next session: delete the stale duplicates **by ID** (keep reminder `0680023a…`, default `0e75eac7…`) via `notebooklm source delete --notebook <id> <source_id> -y`. This ambiguous-title no-op is the real cause of earlier "refresh didn't land" notes.
