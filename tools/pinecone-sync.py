@@ -61,9 +61,37 @@ PDF_EXTS = {".pdf"}
 MAX_FILE_BYTES = 2_000_000  # skip files > 2MB
 
 
+def load_dotenv_file(path: Path = VAULT / ".env") -> None:
+    """Load KEY=VALUE pairs from a .env file into os.environ.
+
+    Does NOT override variables already set in the environment, so an explicit
+    shell export still wins. Supports `#` comments, blank lines, optional
+    `export ` prefixes, and single/double-quoted values. Silently no-ops if the
+    file is missing or unreadable — this is a convenience loader, not a hard dep.
+    """
+    try:
+        if not path.is_file():
+            return
+        for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.startswith("export "):
+                line = line[len("export "):]
+            name, _, value = line.partition("=")
+            name = name.strip()
+            value = value.strip().strip('"').strip("'")
+            if name and name not in os.environ:
+                os.environ[name] = value
+    except Exception:
+        return
+
+
 def get_api_key() -> str:
-    # Windows-friendly: read from the PINECONE_API_KEY environment variable.
-    # (The upstream macOS version read this from the Keychain via `security`.)
+    # Windows-friendly: read from the PINECONE_API_KEY environment variable,
+    # falling back to the vault's .env file so the key doesn't depend on the
+    # calling shell's environment.
+    load_dotenv_file()
     key = os.environ.get("PINECONE_API_KEY")
     if not key:
         sys.exit(

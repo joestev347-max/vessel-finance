@@ -46,11 +46,22 @@ if (Test-Path $git) {
   else { $n = @($status | Where-Object { $_ -ne "" }).Count; Yellow "$n uncommitted files in vault - git status --short - ask before committing" }
 } else { Yellow "git not found at $git" }
 
-# 4. Pinecone - key present, package importable, last sync newer than newest wiki edit
-$pcKey = $env:PINECONE_API_KEY
-if (-not $pcKey) { $pcKey = [Environment]::GetEnvironmentVariable("PINECONE_API_KEY", "User") }
-if (-not $pcKey) {
-  Yellow "Pinecone: PINECONE_API_KEY not set - semantic search disabled"
+# 4. Pinecone - key resolvable the way pinecone-sync.py resolves it (process env OR .env),
+#    package importable, last sync newer than newest wiki edit. We check .env (not just the User
+#    env var) because a spawned sync subprocess does NOT reliably inherit a User-level var set after
+#    the parent shell started - reporting "key set" off the User env alone was a false-green that let
+#    the sync fail with "PINECONE_API_KEY is not set". (anti-pattern #5)
+$envFile = "$repo\.env"
+$keyInProc = [bool]$env:PINECONE_API_KEY
+$keyInDotenv = $false
+if (Test-Path $envFile) { $keyInDotenv = [bool](Select-String -Path $envFile -Pattern '^\s*PINECONE_API_KEY\s*=' -Quiet) }
+$keyInUserEnv = [bool][Environment]::GetEnvironmentVariable("PINECONE_API_KEY", "User")
+if (-not ($keyInProc -or $keyInDotenv)) {
+  if ($keyInUserEnv) {
+    Yellow "Pinecone: key only in User env, not in .env - spawned sync shells may not inherit it; add PINECONE_API_KEY to .env"
+  } else {
+    Yellow "Pinecone: PINECONE_API_KEY not set (checked process env, .env, User env) - semantic search disabled"
+  }
 } elseif (-not (Test-Path $py)) {
   Yellow "Pinecone: python not found at $py"
 } else {
