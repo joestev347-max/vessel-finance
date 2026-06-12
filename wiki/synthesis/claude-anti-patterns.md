@@ -1,7 +1,7 @@
 ---
 type: synthesis
 created: 2026-06-02
-updated: 2026-06-11
+updated: 2026-06-12
 ---
 
 # Claude Anti-Patterns — Vessel Finance
@@ -132,3 +132,10 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Why it's tempting**: A one-liner feels faster than writing a file, and the syntax is correct — so the failure looks like a PowerShell or tool bug rather than a transport problem.
 - **Why it's wrong**: Desktop Commander mangles `$`-prefixed tokens (env vars, loop variables, `$LASTEXITCODE`) in transit on this machine — the same transport issue as the double-quote mangling in anti-pattern #7, different symptom. Anything depending on an inline `$`-reference survives only by luck.
 - **Corrective rule**: For any PowerShell that references `$`-variables — env injection (`$env:X = [Environment]::GetEnvironmentVariable(...)`), loop counters, `$LASTEXITCODE` capture — **write a `.ps1` file and run it with `-File`**, never `-Command "...$..."`. This was hit repeatedly on 2026-06-11 (Pinecone env injection, build/commit poll loops, exit-code capture); every case was solved by moving the logic into a redirected-output `.ps1`. Pairs with #4 (redirect stdout to a file) and #7 (quoting) — the general rule is *scripts on disk, not inline, for anything non-trivial*.
+
+## 18. NotebookLM `source delete-by-title` is a silent no-op on ambiguous titles → duplicates pile up
+
+- **Trigger pattern**: The end-of-session refresh runs `notebooklm source delete-by-title "claude-anti-patterns.md" --notebook <id>` then `source add` the new file. The delete prints `Title '…' matches 2 sources. Delete by ID instead:` and exits **non-zero without deleting**, but the `source add` on the next line still runs — so every wrap adds another copy. Over several sessions the reminder bucket accumulates 3+ identical-titled sources.
+- **Why it's tempting**: delete-by-title reads as idempotent ("remove the old copy, add the new one"), and the verification query still passes because NotebookLM answers from the *newest* copy — so the refresh looks healthy while clutter grows. (This is the real mechanism behind earlier "refresh didn't land" notes.)
+- **Why it's wrong**: `delete-by-title` refuses to act when >1 source shares the title (it can't disambiguate). The first duplicate is usually created the first time the title-delete silently failed; after that it compounds. An old copy can later outrank the new one in a query, returning stale rules to a fresh session.
+- **Corrective rule**: Refresh by **ID**, not title. `notebooklm source list --notebook <id> --json` to get ids, keep the newest, `notebooklm source delete --notebook <id> <source_id> -y` the rest, then `source add` once. Verify with a known-new fact AND confirm the source count is 1 per title. (Cleanup of the accumulated dupes done 2026-06-12.)

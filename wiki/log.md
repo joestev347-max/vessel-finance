@@ -365,3 +365,41 @@ pre-existing benign SECURITY DEFINER warnings + leaked-password-protection remai
   monthly reports still pending, security hardening still deferred.
 
 - **End-of-session sync (2026-06-11)**: Pinecone `--changed-only` → 2 wiki files / 41 chunks (21 unchanged). NotebookLM: re-added `claude-anti-patterns.md` (reminder bucket) + `log.md` (default bucket) and **VERIFIED** — the reminder bucket now answers anti-pattern #17 (inline `$`-var mangling) correctly. `refreshed: 2  verified: yes`. **Cleanup debt**: `source delete-by-title` aborts when a title is ambiguous (multiple sources share the name), so old copies were NOT removed while `source add` still ran → duplicate sources accumulated (reminder has 3× `claude-anti-patterns.md`, default has 3× `log.md`). Next session: delete the stale duplicates **by ID** (keep reminder `0680023a…`, default `0e75eac7…`) via `notebooklm source delete --notebook <id> <source_id> -y`. This ambiguous-title no-op is the real cause of earlier "refresh didn't land" notes.
+
+## [2026-06-12] setup | Boat Budget — entry/category overhaul: day-rate billing, multi-vessel split, vendors/employees
+
+Continuation session on the **Boat Budget** app (Supabase `aiugwzgxpwgmglpojgoz`, repo boat-budget,
+live boat-budget.vercel.app). 8 commits, all built green + deployed READY; finance suite steady at
+**54/54**; Supabase security advisors clean after every migration (only the 3 pre-existing benign
+SECURITY DEFINER warnings + leaked-password remain). Final HEAD `9fe970d`.
+
+- **Cleared all dummy/experimental data** (transactions, transfers, all budgets, operating days)
+  per Joe; kept the 4 vessels + the April 2026 monthly report. One orphaned storage receipt
+  (`Emma-Rose-Spec-Sheet.pdf`) could NOT be removed — Supabase blocks direct `storage.objects`
+  deletes (a `protect_delete` trigger) and the repo only has the anon key; needs the dashboard or a
+  service-role key. Claude-in-Chrome was attempted but no browser/extension was connected.
+- **Vessel budget = variable-only** (`f0b82c5`): the $25k/$300k allocation is a VARIABLE budget;
+  bars + variance now measure variable spend only; relabeled fields "variable".
+- **Customer/Vendor dropdowns with inline "Add new"** (`1f83cdf`): new `vendors` table +
+  `transactions.vendor_id`; generalized `PartyPicker`. Expense-by-vendor report (`8bc0f8c`).
+- **Revenue categories → Shifting/Assist/Time Charter/Towing** + **revenue_subcategories** table
+  (Day Rate/Hourly/Trip Price per category) (`8bc0f8c`). Renamed overlapping cats to preserve the
+  April Towing line; deleted the 4 unused.
+- **Day-rate / hourly billing** (`1749aab`,`864b7b5`): `transactions.rate_detail` jsonb; revenue
+  Day Rate auto-counts days from a date span (inclusive) × day rate + hours × hourly rate; Hourly =
+  hours × rate; Trip Price = lump sum. Server stores the breakdown; client computes the amount.
+- **Expense overhaul** (`a047944`): overhead removed from the expense category dropdown (variable
+  only); added Grub + Equipment Charter; cost subcategories replaced with Com Data/Invoice (old ones
+  archived to preserve the April report); **multi-vessel split** (checkboxes → even split into one
+  txn per vessel, remainder cents distributed, receipt attached to each).
+- **Equipment Charter billed per day** (`00c954a`): expense day-rate mirroring revenue, combines
+  with the split (rate_detail carries split_count).
+- **Truck Fuel** category + **shoreside_employees** table + `transactions.shoreside_employee_id`
+  (`9fe970d`): when the Com Data subcategory is selected, a Shoreside-employee picker appears so
+  credit-card expenses can be tagged to people, not only vessels (still allocates to a vessel).
+- New anti-pattern **#18** (NotebookLM delete-by-title is a silent no-op on ambiguous titles).
+- Open items carried to HANDOFF.md: orphaned storage file; uneven/weighted cost split; non-vessel
+  (employee-only) expenses; customer/vendor/employee management page; May/June reports; security
+  hardening; confirm inclusive vs exclusive day-count convention.
+
+- **End-of-session sync (2026-06-12)**: Pinecone `--changed-only` → 2 wiki files / 45 chunks. NotebookLM **deduplicated by ID** (deleted 3 stale `claude-anti-patterns.md` from reminder + 3 stale `log.md` from default — the accumulation from anti-pattern #18), then added one fresh copy of each. **Verified**: reminder bucket answers anti-pattern #18 correctly. Both buckets now 1 source per title. `refreshed: 2  verified: yes  dedup: done`.
