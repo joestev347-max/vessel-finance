@@ -403,3 +403,21 @@ SECURITY DEFINER warnings + leaked-password remain). Final HEAD `9fe970d`.
   hardening; confirm inclusive vs exclusive day-count convention.
 
 - **End-of-session sync (2026-06-12)**: Pinecone `--changed-only` → 2 wiki files / 45 chunks. NotebookLM **deduplicated by ID** (deleted 3 stale `claude-anti-patterns.md` from reminder + 3 stale `log.md` from default — the accumulation from anti-pattern #18), then added one fresh copy of each. **Verified**: reminder bucket answers anti-pattern #18 correctly. Both buckets now 1 source per title. `refreshed: 2  verified: yes  dedup: done`.
+
+
+## [2026-06-19] setup | Boat Budget — barges, price-per-ton, budgets cleanup, accounting reconciliation
+
+Large feature session on the **Boat Budget** Next.js app (`joestev347-max/boat-budget`, master, auto-deploys to Vercel). Every change committed + pushed + verified READY; HEAD `0227a1b`. App tests 61/61, build clean throughout.
+
+- **Barges & shoreside cost centers** (`f036a0f`…): a `kind` column on `vessels` (`vessel`/`barge`/`shoreside`, already on live DB). `getReferenceData` partitions vessels/barges/shoresideCenters; a single pure `txnsForVesselIds` walls barge/shoreside txns out of every fleet figure (dashboard, exec actuals, full-ledger CSV, monthly reconciliation). Shoreside = single expense bucket; barges = revenue-only.
+- **Price per Ton** revenue **subcategory** (`7f820cc`): one shipment → boat revenue (tonnage × $/ton) to the vessel **and** $2/ton barge rental to the single "Barge Rental" bucket. **NYS sales tax** 8.625% on the rental (NY only), tracked separately as a remittable liability (`sales_tax`/`tax_state` cols).
+- **Barge charter** revenue: multi-select barge #s, each at its own day rate; one record per barge on the bucket. Docks + barge_units tables (find-or-create pickers).
+- **Demo data cleared** (backed up to `_demo_backup_*`): 0 transactions, docks/barge_units/customers cleared for manual entry. 4 vessels + Barge Rental + Shoreside buckets remain.
+- **Edit-transaction** feature (admin edits/deletes any entry).
+- **Budgets = single source**: removed per-vessel budget fields from the Vessels page (vessel = info only); **revenue targets removed from Budgets** (live only in Fleet Utilization); added a **Barge overhead** scope (new `Barge Overhead` cost category). Fleet Utilization day-rate defaults to $12,500 and persists per browser.
+- **Executive** page: company-wide ALL revenue/expenses (vessels+barges+shoreside) with by-category tables, above the fleet-only section.
+- **Monthly Reports**: fleet/barge **scope**, add-report form, file upload+attach (receipts bucket, allowed-MIME extended for xlsx), client-side parse of **only the "HMS Comb" tab** of accounting's Viewpoint/Vista workbook → maps each line item to category/subcategory (mirrors the demo April mapping) → server resolves names→ids → per-category reconciliation vs entered data. Verified against `HMS APRIL.xlsx`: Revenue 1,089,389.82 / Expense 1,106,246.30 / Net −16,856.48 (25 lines).
+- New anti-patterns **#19** (target the named sheet in a multi-sheet workbook, not first-match) and **#20** (parse uploaded files client-side, not in a serverless action). #15 (NODE_ENV → npm omits devDeps) recurred when `npm install xlsx --save` pruned devDeps — fixed with `npm install --include=dev`.
+- Open items / next session: build the **barge** monthly-report tab parser (awaiting a sample barge report); the manual-totals fallback exists for non-HMS layouts; consider a month-by-month sales-tax-collected breakdown; barge overhead is combined (not per-barge).
+
+- **End-of-session sync (2026-06-19)**: Pinecone `--changed-only` → 2 wiki files / 49 chunks. NotebookLM refreshed by **ID** (deleted + re-added `claude-anti-patterns.md` in reminder, `log.md` in default; still 1 source per title). **Verified**: reminder bucket answers new anti-pattern #20 (parse uploaded files client-side) correctly. `refreshed: 2  verified: yes`.

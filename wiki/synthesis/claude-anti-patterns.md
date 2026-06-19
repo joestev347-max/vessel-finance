@@ -139,3 +139,18 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Why it's tempting**: delete-by-title reads as idempotent ("remove the old copy, add the new one"), and the verification query still passes because NotebookLM answers from the *newest* copy — so the refresh looks healthy while clutter grows. (This is the real mechanism behind earlier "refresh didn't land" notes.)
 - **Why it's wrong**: `delete-by-title` refuses to act when >1 source shares the title (it can't disambiguate). The first duplicate is usually created the first time the title-delete silently failed; after that it compounds. An old copy can later outrank the new one in a query, returning stale rules to a fresh session.
 - **Corrective rule**: Refresh by **ID**, not title. `notebooklm source list --notebook <id> --json` to get ids, keep the newest, `notebooklm source delete --notebook <id> <source_id> -y` the rest, then `source add` once. Verify with a known-new fact AND confirm the source count is 1 per title. (Cleanup of the accumulated dupes done 2026-06-12.)
+
+
+## 19. Parsing a multi-sheet workbook by "first sheet that matches" grabs the wrong sheet
+
+- **Trigger pattern**: An Excel auto-reader for accounting's income statement scans every tab and uses the first sheet that has a "Revenue" line with a numeric value. It returns plausible-but-wrong numbers (or zeros), and the reconciliation is off.
+- **Why it's tempting**: "First sheet with a Revenue line" feels robust and avoids hard-coding a tab name. On a single-statement file it works.
+- **Why it's wrong**: Real ERP exports (Viewpoint/Vista here) are one giant workbook with **dozens of division P&Ls** (HEG Fiber, Grace Civil, …) that each have an identical "Revenue" row — all appearing *before* the entity you want. First-match locks onto the wrong division and silently maps that division's figures.
+- **Corrective rule**: Target the **specific named sheet** the user identified (here: the tab whose name contains "hms comb"), with a narrow fallback (`includes("hms")`). Confirm the picked sheet's totals against a known value before trusting it. (Hit 2026-06-19 building the Boat Budget monthly-report Excel reader; the user had to say "only categorize the HMS Comb tab." Validated the fix locally against `HMS APRIL.xlsx` → Revenue 1,089,389.82 before deploying.)
+
+## 20. Parsing an uploaded file in a serverless action is unreliable; parse it in the browser
+
+- **Trigger pattern**: A Next.js server action downloads an uploaded `.xlsx` from storage and parses it with SheetJS server-side. The action runs without throwing but creates **zero** rows — the report saves with $0 everywhere. The same parse logic works perfectly in a local Node script against the same file.
+- **Why it's tempting**: Doing the parse + DB write in one server action is tidy, keeps the category-mapping and id-lookups server-side, and "it's just Node."
+- **Why it's wrong**: The combination of storage `download()` + a heavy CJS lib (`xlsx`) bundled into a Vercel serverless function is fragile — the failure is silent (caught and returns empty), so you can't see *which* part broke, and local `readFile` doesn't reproduce it. You burn time on RLS/MIME/bundle theories.
+- **Corrective rule**: Parse the file **client-side**, where the `File` object already lives and the browser SheetJS path is well-trodden. Map to category **names** in the browser, ship a small JSON of `{direction, cat, sub, amount}` to the server, and let the server only resolve names→ids and insert. Reserve server-side file parsing for cases the browser genuinely can't do. (Hit 2026-06-19; moving the HMS parse to the client fixed the $0 reports immediately.)
