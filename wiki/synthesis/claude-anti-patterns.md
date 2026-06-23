@@ -154,3 +154,18 @@ A larger vendored base of generic anti-patterns ships in the LimitlessStack repo
 - **Why it's tempting**: Doing the parse + DB write in one server action is tidy, keeps the category-mapping and id-lookups server-side, and "it's just Node."
 - **Why it's wrong**: The combination of storage `download()` + a heavy CJS lib (`xlsx`) bundled into a Vercel serverless function is fragile — the failure is silent (caught and returns empty), so you can't see *which* part broke, and local `readFile` doesn't reproduce it. You burn time on RLS/MIME/bundle theories.
 - **Corrective rule**: Parse the file **client-side**, where the `File` object already lives and the browser SheetJS path is well-trodden. Map to category **names** in the browser, ship a small JSON of `{direction, cat, sub, amount}` to the server, and let the server only resolve names→ids and insert. Reserve server-side file parsing for cases the browser genuinely can't do. (Hit 2026-06-19; moving the HMS parse to the client fixed the $0 reports immediately.)
+
+
+## 21. Re-scoping a value (exclude/move it) but updating only the headline figure, not every place it's aggregated
+
+- **Trigger pattern**: A requirement says "value X should no longer count toward Y." You change the headline total and a stat card, ship it, and claim it done — but the same value is also summed in a secondary breakdown (a by-unit table, a chart, a CSV), which still includes it. The user catches the leak in the next message.
+- **Why it's tempting**: The headline total is the obvious surface and where the requirement "points." Once it reads right, the change *looks* complete.
+- **Why it's wrong**: A value usually appears in several aggregations. On Boat Budget, splitting barge **charter** out of barge net income updated the net-income calc and the headline stat, but the "Revenue by barge #" per-unit table still summed *all* barge revenue — so charter still showed on the Barges tab (caught 2026-06-22, immediately after a "done" claim). Updating one aggregation and not its siblings ships a half-applied rule.
+- **Corrective rule**: When re-scoping a value, **grep for every aggregation of it** (every `sum/reduce/filter` over the same source, every table/chart/export) and apply the rule to all of them — or consciously decide each one's treatment. Then, per audit-before-claim, actually trace where the value surfaces in the UI before saying "done"; a TypeScript build passing does not prove the rule landed everywhere.
+
+## 22. PowerShell mangles `git commit -m` messages containing `()`, `$`, or `/` — use `git commit -F <file>`
+
+- **Trigger pattern**: `git commit -m "Feature (with parens), $var-ish text, a/b"` run via the spawned PowerShell shell fails with `The term 'with' is not recognized` / `month/YTD is not recognized` — PowerShell parses fragments of the message as commands. Same root as #7 (quote mangling) and #17 (`$`-token stripping), new surface (the commit message).
+- **Why it's tempting**: `-m` inline is the reflexive way to commit; the message is "just a string."
+- **Why it's wrong**: The message rides through the same DC→PowerShell transport that eats `$`, unbalanced quotes, and parses `()`/`/` — so any non-trivial commit message (which our descriptive commits always are) breaks unpredictably.
+- **Corrective rule**: Write the commit message to a file and `git commit -F <msgfile>` (then delete it), or keep `-m` messages to plain ASCII words with no `()`/`$`/`/`/quotes. Hit ~6× on 2026-06-22; every descriptive commit went through `-F`. (Also note: git writes progress to **stderr**, which Desktop Commander renders as a red `NativeCommandError` — that is NOT a failure; verify via `$LASTEXITCODE` and the `-> master` line.)
