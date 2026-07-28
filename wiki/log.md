@@ -449,3 +449,44 @@ Cowork session prepping the **Boat Budget** app (`joestev347-max/boat-budget`, S
 - **Open items / next session**: (1) delete leftover test account `jstevenson@hauglandllc.com` (read-only, created during a signup-toggle test); (2) `tcarsch` invite still pending (unconfirmed, never logged in); (3) rotate DB password + `sb_secret_` key — both passed through chat; (4) optional advisor cleanup: 3 `SECURITY DEFINER` funcs (`can_enter_txn`/`can_write`/`my_role`) → private schema, drop `_demo_backup_*`; (5) Fleet & Profitability still annual-only (no period selector); (6) forecast excludes fleet overhead; (7) runtime-verify the 6/22 barge/fuel/surcharge changes with real data.
 
 - **End-of-session sync (2026-07-01)**: Pinecone `--changed-only` → 2 wiki files / 61 chunks (21 unchanged). NotebookLM refreshed **by ID** (reminder: `claude-anti-patterns.md` → new `c0889fb8`; default: `log.md` → new `0519751b`). **Verified**: reminder bucket correctly answers new #23 (Vercel webhook → nudge with empty commit) and #25 (Supabase auth config/user creation is control-plane, not SQL). `refreshed: 2  verified: yes`.
+
+
+## [2026-07-28] schema | Boat Budget — Transactions tab, full transaction editing, user-managed cost categories
+
+Feature session on the **Boat Budget** app (`joestev347-max/boat-budget`, master, auto-deploys to
+Vercel; Supabase `aiugwzgxpwgmglpojgoz`). Four features, each committed → pushed → confirmed Vercel
+**READY** via the Vercel MCP (matching SHA); `next build` clean + finance tests **91/91** before every
+push. Final HEAD `220fd3e`.
+
+- **Transactions tab** (`002c2e9`): new sidebar item + `/transactions` — lists every revenue and
+  expense entry (vessels + barges + shoreside), defaults to the current month, filters by type,
+  coded-to center, category, subcategory, customer, vendor, and free-text; count/revenue/expense/net
+  tiles + CSV export of the filtered set. Reuses EditTransaction/Attachments/CsvButton. Added
+  `revalidatePath("/transactions")` to the txn + attachment mutations.
+- **Full transaction editing** (`d586e65`): expanded the edit modal from a few fields to EVERY field
+  except direction — coded-to, category/subcategory, customer/vendor/shoreside employee (inline
+  "+ add new"), full rate breakdown (dates/day-rate/hourly/hours/fuel/lube/surcharge, amount recomputed
+  live for day-rate/hourly/equipment-charter/barge-charter), and shipment fields for price-per-ton
+  (tonnage/docks/barge #/tax). Lump-sum, price-per-ton, and split entries expose the amount directly.
+  `updateTransaction` now persists all of it; the form carries unshown columns as **hidden inputs** so an
+  edit never nulls an unrelated field.
+- **User-managed cost categories — Budgets panel** (`338fc55`): add a category (variable/overhead),
+  archive/restore; `createCostCategory` (dedupe by name+grp, append sort_order) + `setCostCategoryArchived`.
+  Archived categories hidden from expense entry + budget sections, kept for historical filtering. The
+  `costcat_write` RLS policy (`can_write()`) already allowed inserts — no migration.
+- **Inline cost-category add on the Expenses tab** (`220fd3e`): "+ Add new category" in the expense
+  cost-category dropdown (write roles only); server `resolveCostCategoryId` find-or-creates a variable
+  category by name and codes the expense to it, reusing the row across a multi-vessel split.
+- **Data check (Supabase MCP)**: chased a "WEEKS customer missing from the Transactions filter" report —
+  WEEKS is a **customer** (19 revenue txns this July), so it correctly lives in the Customer filter, not
+  the Vendor filter; not a bug. **115 live July transactions** now in the DB (rollout underway); 19
+  customers / 30 vendors.
+- New anti-patterns **#26** (Supabase MCP multi-statement SQL returns only the last result) and **#27**
+  (remote-devices bridge drops mid-edit → verify landed state, batch build+commit). The device bridge
+  disconnected several times mid-session; the combined build→test→commit script is what let the last
+  feature survive a drop.
+- **Honest caveat**: all four features verified by clean `next build` + 91/91 + Vercel READY + code review,
+  **not** a runtime click-through — but there is now real July data to exercise them against.
+- HANDOFF.md refreshed.
+
+- **End-of-session sync (2026-07-28)**: Pinecone `--changed-only` → 2 wiki files / 65 chunks (21 unchanged). NotebookLM refreshed **by ID** (reminder: `claude-anti-patterns.md` → `05932d62`; default: `log.md` → `975b0be5`) and **VERIFIED** — the reminder bucket answers new anti-pattern #27 (bridge drops mid-edit), the default bucket lists the four 2026-07-28 Boat Budget features. `refreshed: 2  verified: yes`.
